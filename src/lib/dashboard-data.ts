@@ -145,7 +145,6 @@ export const activityFeed: ActivityItem[] = [
 ]
 
 export const aiModels = [
-  { id: 'gemini-flash', name: 'Gemini 2.5 Flash', tag: 'Fast Logic' },
-  { id: 'gemini-pro', name: 'Gemini 2.5 Pro', tag: 'Deep Reasoning' },
-  { id: 'kronova-audit', name: 'Kronova Audit v2', tag: 'Compliance Tuned' },
+  { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', tag: 'Balanced' },
+  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', tag: 'Fast' },
 ]
