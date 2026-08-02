@@ -29,17 +29,17 @@ export function Hero() {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <Sparkles className="size-3.5 text-primary" />
-            Audit. Reply. Scale.
+            Colombia MVP · Product preview
           </div>
 
           <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.05] tracking-tight md:text-5xl lg:text-6xl">
-            Automate Your Business Integrity &amp; Reputation with{' '}
-            <span className="text-gradient">Multi-Model AI</span>
+            Review business documents with{' '}
+            <span className="text-gradient">structured AI assistance</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-            Streamline contract audits, compliance validation, and review automation in one
-            unified ecosystem.
+            KRONOVA is building DocAudit for Colombian electronic invoices, with LeaseReader
+            and ReviewSync on the product roadmap.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -47,7 +47,7 @@ export function Hero() {
               href="#pricing"
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
             >
-              Start Free Trial
+              View planned pricing
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <a
@@ -55,16 +55,16 @@ export function Hero() {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-card/70"
             >
               <PlayCircle className="size-4 text-primary" />
-              Watch Interactive Demo
+              Explore the roadmap
             </a>
           </div>
 
           <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground">
-            <span>Gemini 2.5 Flash</span>
+            <span>Gemini 3.6 Flash</span>
             <span className="size-1 rounded-full bg-border" />
-            <span>DeepSeek</span>
+            <span>Structured JSON</span>
             <span className="size-1 rounded-full bg-border" />
-            <span>Enterprise Encryption</span>
+            <span>Colombia first</span>
           </div>
         </motion.div>
 

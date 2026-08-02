@@ -17,16 +17,16 @@ export function DashboardMockup() {
         </div>
         <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] text-muted-foreground">
           <Sparkles className="size-3 text-primary" />
-          Multi-Model Routing · Live
+          DocAudit · Product preview
         </div>
       </div>
 
       {/* Stat row */}
       <div className="grid grid-cols-3 gap-3 py-4">
         {[
-          { label: 'Risk Score', value: '0.4%', icon: ShieldCheck, tone: 'text-primary' },
-          { label: 'Docs Audited', value: '12,480', icon: FileCheck2, tone: 'text-accent' },
-          { label: 'Avg Latency', value: '1.7s', icon: Activity, tone: 'text-primary' },
+          { label: 'Checks', value: '3', icon: ShieldCheck, tone: 'text-primary' },
+          { label: 'Input types', value: '4', icon: FileCheck2, tone: 'text-accent' },
+          { label: 'Output', value: 'JSON', icon: Activity, tone: 'text-primary' },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card/60 p-3">
             <s.icon className={`size-4 ${s.tone}`} />
@@ -41,9 +41,9 @@ export function DashboardMockup() {
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium">
             <TrendingUp className="size-4 text-primary" />
-            DCA Revenue
+            Example processing activity
           </div>
-          <span className="text-[11px] text-muted-foreground">Last 8 weeks</span>
+          <span className="text-[11px] text-muted-foreground">Illustrative data</span>
         </div>
         <div className="flex h-28 items-end gap-2">
           {BARS.map((h, i) => (

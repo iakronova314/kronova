@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KRONOVA
 
-## Getting Started
+KRONOVA es una plataforma SaaS B2B en construcción para análisis asistido de documentos. El primer producto será **DocAudit Colombia**, orientado a revisar facturas electrónicas y generar reportes estructurados y explicables.
 
-First, run the development server:
+El repositorio contiene actualmente:
+
+- Landing y dashboard de producto.
+- Vista previa funcional de análisis de archivos de texto con Gemini.
+- Salida JSON estructurada con resumen, puntos clave y riesgos.
+- Alcance aprobado para el MVP de Colombia.
+- Esqueleto de webhook Stripe con validación de firma, todavía sin lógica de suscripciones.
+
+## Estado del producto
+
+El proyecto es una vista previa, no un servicio de producción. Todavía no incluye autenticación, aislamiento multiempresa, almacenamiento documental, procesamiento PDF/XML, reglas DIAN completas, cobros activos ni límites por suscripción.
+
+Los módulos planeados son:
+
+1. DocAudit — primer módulo y foco del MVP.
+2. LeaseReader — segunda fase.
+3. ReviewSync — tercera fase.
+
+Consulta [el alcance funcional de Colombia](docs/MVP-SCOPE-COLOMBIA.md) para conocer formatos, límites, retención y criterios de aceptación. La distribución de responsabilidades, flujos, endpoints y estrategia de pagos está definida en [la arquitectura técnica](docs/ARCHITECTURE.md). Los temas comerciales, legales y técnicos aún abiertos se controlan en el [registro de decisiones pendientes](docs/PENDING-DECISIONS.md).
+
+## Requisitos
+
+- Node.js 20 o superior.
+- npm.
+- Una API key de Google Gemini para probar el análisis actual.
+- Credenciales Supabase y Stripe solamente cuando se desarrollen esas integraciones.
+
+## Configuración local
+
+1. Instala dependencias:
+
+   ```bash
+   npm install
+   ```
+
+2. Copia `.env.example` como `.env.local` y completa solo las variables necesarias.
+
+3. Inicia el entorno de desarrollo:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Abre `http://localhost:3000`.
+
+## Variables de entorno
+
+| Variable | Uso | Exposición |
+|---|---|---|
+| `GEMINI_API_KEY` | Análisis de documentos en el servidor | Privada |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL pública del proyecto Supabase | Pública |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anónima protegida mediante RLS | Pública |
+| `SUPABASE_SERVICE_ROLE_KEY` | Operaciones privilegiadas de servidor | Secreta |
+| `STRIPE_SECRET_KEY` | API de Stripe en el servidor | Secreta |
+| `STRIPE_WEBHOOK_SECRET` | Verificación de webhooks Stripe | Secreta |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe.js en el navegador | Pública |
+
+Nunca expongas variables privadas con el prefijo `NEXT_PUBLIC_` ni confirmes `.env.local` en Git.
+
+## Comandos
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run lint
+npm run build
+npm run check
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run check` ejecuta TypeScript, ESLint y el build de producción en orden.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Estructura principal
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+docs/                         Alcance y decisiones del producto
+src/app/                      Rutas, páginas y endpoints Next.js
+src/app/api/ai/analyze/       Vista previa de análisis con Gemini
+src/components/               Landing, dashboard y componentes UI
+src/lib/                      Tipos y datos temporales de la interfaz
+```
 
-## Learn More
+## Seguridad y cumplimiento
 
-To learn more about Next.js, take a look at the following resources:
+La salida de IA es asistencia automatizada y no reemplaza validación de la DIAN, asesoría contable o concepto legal. No cargues documentos sensibles en un despliegue público hasta implementar autenticación, almacenamiento privado, RLS, cuotas, retención y auditoría.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Criterio de calidad
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Antes de integrar cambios, deben pasar:
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run check
+```

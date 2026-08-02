@@ -14,12 +14,14 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { aiModels } from '@/lib/dashboard-data'
+import { createClient } from '@/lib/supabase/browser'
 
 interface UploadFile {
   id: string
   name: string
   progress: number
   done: boolean
+  stage: string
   result?: AnalysisResult
   error?: string
 }
@@ -30,16 +32,10 @@ interface AnalysisResult {
   riesgos: string[]
 }
 
-interface AnalyzeResponse {
-  success: boolean
-  data?: AnalysisResult
-  error?: string
-}
-
 const MAX_FILES = 6
-const MAX_FILE_SIZE = 1_000_000
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-export function UploadWorkspace() {
+export function UploadWorkspace({ tenantId }: { tenantId: string }) {
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<UploadFile[]>([])
   const [model, setModel] = useState(aiModels[0])
@@ -47,44 +43,48 @@ export function UploadWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Función para enviar el contenido del archivo a la API de Gemini
-  const analyzeFileContent = async (fileId: string, textContent: string, modelId: string) => {
+  const analyzeFileContent = useCallback(async (fileId: string, file: File) => {
     try {
-      const response = await fetch('/api/ai/analyze', {
+      const mimeType = file.type || ({ pdf: 'application/pdf', xml: 'application/xml', txt: 'text/plain', md: 'text/markdown', json: 'application/json', csv: 'text/csv' }[file.name.toLowerCase().split('.').pop() ?? ''] ?? 'application/octet-stream')
+      const uploadResponse = await fetch('/api/documents/upload-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          textContent,
-          model: modelId,
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Kronova-Tenant-Id': tenantId },
+        body: JSON.stringify({ fileName: file.name, mimeType, sizeBytes: file.size, module: 'docaudit' }),
       })
-
-      const data = (await response.json()) as AnalyzeResponse
-
-      if (response.ok && data.success && data.data) {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, progress: 100, done: true, result: data.data } : f,
-          ),
-        )
-      } else {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId
-              ? { ...f, progress: 100, done: true, error: data.error || 'Error al analizar.' }
-              : f,
-          ),
-        )
+      const upload = await uploadResponse.json() as { documentId?: string; path?: string; token?: string; error?: string }
+      if (!uploadResponse.ok || !upload.documentId || !upload.path || !upload.token) throw new Error(upload.error ?? 'No fue posible preparar la carga.')
+      setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 35, stage: 'Subiendo a Storage' } : item))
+      const { error: storageError } = await createClient().storage.from('documents').uploadToSignedUrl(upload.path, upload.token, file, { contentType: mimeType })
+      if (storageError) throw new Error('No fue posible almacenar el archivo.')
+      setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 65, stage: 'Validando integridad' } : item))
+      const completeResponse = await fetch(`/api/documents/${upload.documentId}/complete`, { method: 'POST' })
+      const completed = await completeResponse.json() as { error?: string; jobId?: string }
+      if (!completeResponse.ok) throw new Error(completed.error ?? 'No fue posible validar el archivo almacenado.')
+      if (!completed.jobId) throw new Error('No se recibió el identificador del trabajo.')
+      setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 72, stage: 'En cola' } : item))
+      for (let attempt = 0; attempt < 150; attempt++) {
+        const response = await fetch(`/api/jobs/${completed.jobId}`)
+        const job = await response.json() as { status?: string; progress?: number; error_code?: string; data?: AnalysisResult; error?: string }
+        if (!response.ok) throw new Error(job.error ?? 'No fue posible consultar el trabajo.')
+        setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 72 + Math.round((job.progress ?? 0) * 0.27), stage: job.status === 'queued' ? 'En cola' : job.status === 'retrying' ? 'Reintentando' : 'Procesando' } : item))
+        if (job.status === 'completed' && job.data) {
+          setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 100, done: true, stage: 'Completado', result: job.data } : item))
+          return
+        }
+        if (job.status === 'failed') throw new Error(job.error_code === 'OCR_REQUIRED' ? 'Documento almacenado: requiere OCR antes del análisis.' : 'El procesamiento falló después de agotar los reintentos.')
+        await new Promise((resolve) => setTimeout(resolve, 2000))
       }
-    } catch {
+      throw new Error('El procesamiento continúa en segundo plano. Consulta el documento más tarde.')
+    } catch (error) {
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileId
-            ? { ...f, progress: 100, done: true, error: 'Error de conexión con Gemini AI.' }
+            ? { ...f, progress: 100, done: true, stage: 'Error', error: error instanceof Error ? error.message : 'Error durante la carga segura.' }
             : f,
         ),
       )
     }
-  }
+  }, [tenantId])
 
   const addFiles = useCallback((list: FileList | null) => {
     if (!list || list.length === 0) return
@@ -95,56 +95,29 @@ export function UploadWorkspace() {
     const newUploadFiles: UploadFile[] = incomingFiles.map((f, i) => ({
       id: `${Date.now()}-${i}-${f.name}`,
       name: f.name,
-      progress: 50,
+      progress: 15,
       done: false,
+      stage: 'Preparando carga',
     }))
 
     setFiles((prev) => [...newUploadFiles, ...prev])
 
-    // Leer cada archivo de texto y procesarlo
     incomingFiles.forEach((file, index) => {
       const targetFileObj = newUploadFiles[index]
       if (file.size > MAX_FILE_SIZE) {
         setFiles((prev) =>
           prev.map((f) =>
             f.id === targetFileObj.id
-              ? { ...f, progress: 100, done: true, error: 'El archivo supera el límite de 1 MB.' }
+              ? { ...f, progress: 100, done: true, stage: 'Error', error: 'El archivo supera el límite de 10 MB.' }
               : f,
           ),
         )
         return
       }
 
-      const reader = new FileReader()
-
-      reader.onload = (e) => {
-        const content = e.target?.result as string
-        if (content) {
-          void analyzeFileContent(targetFileObj.id, content, model.id)
-        } else {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === targetFileObj.id
-                ? { ...f, progress: 100, done: true, error: 'El archivo está vacío.' }
-                : f,
-            ),
-          )
-        }
-      }
-
-      reader.onerror = () => {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === targetFileObj.id
-              ? { ...f, progress: 100, done: true, error: 'No se pudo leer el archivo.' }
-              : f,
-          ),
-        )
-      }
-
-      reader.readAsText(file)
+      void analyzeFileContent(targetFileObj.id, file)
     })
-  }, [files.length, model.id])
+  }, [analyzeFileContent, files.length])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -231,7 +204,7 @@ export function UploadWorkspace() {
             ref={inputRef}
             type="file"
             multiple
-            accept=".txt,.md,.json,.csv,text/plain,text/markdown,application/json,text/csv"
+            accept=".pdf,.xml,.txt,.md,.json,.csv,application/pdf,application/xml,text/xml,text/plain,text/markdown,application/json,text/csv"
             className="hidden"
             onChange={(e) => {
               addFiles(e.target.files)
@@ -243,7 +216,7 @@ export function UploadWorkspace() {
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">
-              Drop text documents (.txt / .md / .json / .csv) here
+              Sube PDF, XML, TXT, MD, JSON o CSV
             </p>
             <p className="text-sm text-muted-foreground">for Instant AI Analysis</p>
           </div>
@@ -285,7 +258,7 @@ export function UploadWorkspace() {
                         ) : (
                           <>
                             <Loader2 className="size-3 animate-spin text-primary" />
-                            Analyzing with Gemini...
+                            {file.stage}
                           </>
                         )}
                       </span>

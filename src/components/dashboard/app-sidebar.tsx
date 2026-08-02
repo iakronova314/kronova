@@ -12,9 +12,12 @@ import {
   Hexagon,
   PanelLeftClose,
   PanelLeftOpen,
+  LogOut,
 } from 'lucide-react'
+import { logout } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
-import { navModules, tenants, type ModuleId, type Tenant } from '@/lib/dashboard-data'
+import { navModules, type ModuleId, type Organization } from '@/lib/dashboard-data'
+import { switchOrganization } from '@/app/dashboard/organization-actions'
 
 interface AppSidebarProps {
   collapsed: boolean
@@ -23,6 +26,9 @@ interface AppSidebarProps {
   onModuleChange: (id: ModuleId) => void
   theme: 'dark' | 'light'
   onToggleTheme: () => void
+  organizations: Organization[]
+  activeOrganization: Organization
+  user: { name: string; email: string }
 }
 
 export function AppSidebar({
@@ -32,8 +38,10 @@ export function AppSidebar({
   onModuleChange,
   theme,
   onToggleTheme,
+  organizations,
+  activeOrganization,
+  user,
 }: AppSidebarProps) {
-  const [tenant, setTenant] = useState<Tenant>(tenants[0])
   const [tenantOpen, setTenantOpen] = useState(false)
 
   return (
@@ -79,40 +87,38 @@ export function AppSidebar({
               className="flex w-full items-center gap-2 rounded-lg border border-border bg-sidebar-accent/50 px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent"
             >
               <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-xs font-semibold text-primary">
-                {tenant.initials}
+                {activeOrganization.initials}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-sidebar-foreground">
-                  {tenant.name}
+                  {activeOrganization.name}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{tenant.plan}</p>
+                <p className="truncate text-xs text-muted-foreground">{activeOrganization.plan}</p>
               </div>
               <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
             </button>
 
             {tenantOpen && (
               <div className="absolute top-full left-0 z-20 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-xl shadow-black/30">
-                {tenants.map((t) => (
+                {organizations.map((organization) => (
+                  <form action={switchOrganization} key={organization.id}>
+                    <input type="hidden" name="tenantId" value={organization.id} />
                   <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTenant(t)
-                      setTenantOpen(false)
-                    }}
+                    type="submit"
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/10"
                   >
                     <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-[10px] font-semibold text-primary">
-                      {t.initials}
+                      {organization.initials}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-popover-foreground">{t.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{t.plan}</p>
+                      <p className="truncate text-sm text-popover-foreground">{organization.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{organization.plan}</p>
                     </div>
-                    {t.id === tenant.id && (
+                    {organization.id === activeOrganization.id && (
                       <Check className="size-4 shrink-0 text-primary" />
                     )}
                   </button>
+                  </form>
                 ))}
               </div>
             )}
@@ -176,6 +182,14 @@ export function AppSidebar({
           <SidebarSecondary icon={KeyRound} label="API Keys" collapsed={collapsed} />
           <SidebarSecondary icon={CreditCard} label="Billing" collapsed={collapsed} />
           <li>
+            <form action={logout}>
+              <button type="submit" title={collapsed ? 'Cerrar sesión' : undefined} className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground', collapsed && 'justify-center')}>
+                <LogOut className="size-5 shrink-0" />
+                {!collapsed && <span className="flex-1 text-sm font-medium">Cerrar sesión</span>}
+              </button>
+            </form>
+          </li>
+          <li>
             <button
               type="button"
               onClick={onToggleTheme}
@@ -206,14 +220,14 @@ export function AppSidebar({
           )}
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent">
-            AR
+            {user.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-sidebar-foreground">
-                Alexander R.
+                {user.name}
               </p>
-              <p className="truncate text-xs text-muted-foreground">Admin</p>
+              <p className="truncate text-xs text-muted-foreground">{activeOrganization.role} · {user.email}</p>
             </div>
           )}
         </div>

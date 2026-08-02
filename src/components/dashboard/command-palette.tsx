@@ -22,10 +22,6 @@ export function CommandPalette({ open, onClose, onModuleChange }: CommandPalette
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    if (!open) setQuery('')
-  }, [open])
-
-  useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()

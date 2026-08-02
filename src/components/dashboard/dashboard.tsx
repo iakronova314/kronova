@@ -11,8 +11,11 @@ import { ActivityFeed } from './activity-feed'
 import { ModuleView } from './module-view'
 import { CommandPalette } from './command-palette'
 import type { ModuleId } from '@/lib/dashboard-data'
+import type { Organization } from '@/lib/dashboard-data'
+import { MemberInvitations } from './member-invitations'
+import { DocumentHistory } from './document-history'
 
-export function Dashboard() {
+export function Dashboard({ user, organizations, activeOrganization, notice }: { user: { name: string; email: string }; organizations: Organization[]; activeOrganization: Organization; notice?: { error?: string; message?: string } }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [activeModule, setActiveModule] = useState<ModuleId>('overview')
@@ -55,6 +58,9 @@ export function Dashboard() {
           onModuleChange={changeModule}
           theme={theme}
           onToggleTheme={toggleTheme}
+          organizations={organizations}
+          activeOrganization={activeOrganization}
+          user={user}
         />
       </div>
 
@@ -86,6 +92,9 @@ export function Dashboard() {
               onModuleChange={changeModule}
               theme={theme}
               onToggleTheme={toggleTheme}
+              organizations={organizations}
+              activeOrganization={activeOrganization}
+              user={user}
             />
             <button
               type="button"
@@ -112,18 +121,24 @@ export function Dashboard() {
             <div className="mx-auto flex max-w-7xl flex-col gap-6">
               <div>
                 <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                  Welcome back, Alexander
+                  Bienvenido, {user.name}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Here&apos;s what your AI workspace has been up to today.
+                  Actividad de {activeOrganization.name}.
                 </p>
               </div>
 
+              {(notice?.error || notice?.message) && <p role={notice.error ? 'alert' : 'status'} className={`rounded-lg border px-3 py-2 text-sm ${notice.error ? 'border-destructive/40 bg-destructive/10 text-red-300' : 'border-primary/30 bg-primary/10 text-primary'}`}>{notice.error ?? notice.message}</p>}
+
+              <MemberInvitations organization={activeOrganization} />
+
               <KpiCards />
+
+              <DocumentHistory tenantId={activeOrganization.id} />
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">
-                  <UploadWorkspace />
+                  <UploadWorkspace tenantId={activeOrganization.id} />
                 </div>
                 <div className="lg:col-span-1">
                   <ActivityFeed />
@@ -139,6 +154,7 @@ export function Dashboard() {
       </div>
 
       <CommandPalette
+        key={paletteOpen ? 'open' : 'closed'}
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         onModuleChange={changeModule}

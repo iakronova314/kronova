@@ -8,29 +8,29 @@ const MODULES = [
   {
     id: 'docaudit',
     name: 'DocAudit AI',
-    tagline: 'Compliance, invoicing & factoring validation',
+    tagline: 'Colombia MVP · In development',
     icon: FileSearch,
     description:
-      'Instant risk scoring for legal and financial documents. Validate invoices, factoring agreements, and compliance requirements in seconds.',
-    points: ['Instant risk scoring', 'Invoice & factoring validation', 'Compliance checks'],
+      'The first production module will review Colombian electronic invoices using deterministic checks and explainable AI assistance.',
+    points: ['DIAN XML roadmap', 'Arithmetic checks', 'Evidence-based reports'],
   },
   {
     id: 'leasereader',
     name: 'LeaseReader AI',
-    tagline: 'Real estate & legal contract analyzer',
+    tagline: 'Product roadmap · Phase two',
     icon: ScrollText,
     description:
-      'Clause extraction, risk flags, and summary generation for real estate and legal contracts. Understand any agreement without reading every line.',
-    points: ['Clause extraction', 'Automated risk flags', 'Summary generator'],
+      'Planned extraction of dates, rent, increases, renewal terms, and risk clauses for real estate contracts.',
+    points: ['Structured extraction', 'Risk review', 'Expiration alerts'],
   },
   {
     id: 'reviewsync',
     name: 'ReviewSync AI',
-    tagline: 'Multi-channel reputation management',
+    tagline: 'Product roadmap · Phase three',
     icon: MessagesSquare,
     description:
-      'Automatic sentiment analysis and smart automated responses across every channel. Protect and scale your reputation on autopilot.',
-    points: ['Sentiment analysis', 'Automated smart responses', 'Multi-channel sync'],
+      'Planned review synchronization, sentiment analysis, and human-approved response suggestions.',
+    points: ['Platform connectors', 'Sentiment analysis', 'Approval workflow'],
   },
 ]
 
@@ -44,11 +44,11 @@ export function ModulesShowcase() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium text-primary">Interactive Modules</p>
           <h2 className="mt-3 text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-            Three AI engines. One unified ecosystem.
+            One focused MVP. Two modules on the roadmap.
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Purpose-built models that audit documents, decode contracts, and manage your
-            reputation — all working together.
+            DocAudit comes first. LeaseReader and ReviewSync will follow only after the shared
+            SaaS and document-processing foundation is production-ready.
           </p>
         </div>
 

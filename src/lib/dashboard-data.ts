@@ -42,18 +42,13 @@ export const navModules: NavModule[] = [
   },
 ]
 
-export interface Tenant {
+export interface Organization {
   id: string
   name: string
   plan: string
   initials: string
+  role: 'owner' | 'admin' | 'analyst' | 'viewer'
 }
-
-export const tenants: Tenant[] = [
-  { id: 'acme', name: 'Acme Corp', plan: 'Pro Plan', initials: 'AC' },
-  { id: 'northwind', name: 'Northwind Realty', plan: 'Scale Plan', initials: 'NR' },
-  { id: 'globex', name: 'Globex Retail', plan: 'Starter Plan', initials: 'GX' },
-]
 
 export interface Kpi {
   id: string

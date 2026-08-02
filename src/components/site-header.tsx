@@ -37,13 +37,13 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-3 md:flex">
           <a
-            href="#"
+            href="/login"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Sign in
           </a>
           <a
-            href="#pricing"
+            href="/register"
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
           >
             Start Free Trial
@@ -74,8 +74,9 @@ export function SiteHeader() {
                 {link.label}
               </a>
             ))}
+            <a href="/login" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-muted-foreground">Iniciar sesión</a>
             <a
-              href="#pricing"
+              href="/register"
               onClick={() => setOpen(false)}
               className="mt-2 rounded-lg bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground"
             >
