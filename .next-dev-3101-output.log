@@ -1,0 +1,10 @@
+
+> kronova@0.1.0 dev
+> next dev --hostname 127.0.0.1 --port 3101
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://127.0.0.1:3101
+- Network:       http://127.0.0.1:3101
+- Environments: .env.local
+✓ Ready in 2.2s
+[?25h

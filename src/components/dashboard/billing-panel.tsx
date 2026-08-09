@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { CreditCard, ExternalLink, Loader2 } from 'lucide-react'
 
 const plans = [
-  { code: 'docaudit_starter', name: 'Starter', price: 'USD 29/mes', limit: '300 documentos' },
-  { code: 'docaudit_growth', name: 'Growth', price: 'USD 59/mes', limit: '1.000 documentos' },
+  { code: 'docaudit_starter', name: 'Inicial', price: 'USD 29/mes', limit: '300 documentos' },
+  { code: 'docaudit_growth', name: 'Crecimiento', price: 'USD 59/mes', limit: '1.000 documentos' },
 ] as const
 
 export function BillingPanel({ tenantId, role }: { tenantId: string; role: string }) {

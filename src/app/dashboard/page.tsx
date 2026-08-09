@@ -2,7 +2,7 @@ import { Dashboard } from '@/components/dashboard/dashboard'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import type { Organization } from '@/lib/dashboard-data'
+import { translatePlanName, type Organization } from '@/lib/dashboard-data'
 
 type MembershipRow = { role: Organization['role']; tenant: { id: string; name: string } }
 type SubscriptionRow = { tenant_id: string; plan_code: string; status: string; current_period_end: string | null }
@@ -35,7 +35,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const activePlans = new Map<string, string>()
   for (const subscription of (subscriptions ?? []) as SubscriptionRow[]) {
     if (activePlans.has(subscription.tenant_id)) continue
-    activePlans.set(subscription.tenant_id, planNames.get(subscription.plan_code) ?? subscription.plan_code)
+    activePlans.set(subscription.tenant_id, translatePlanName(planNames.get(subscription.plan_code) ?? subscription.plan_code))
   }
   const organizations: Organization[] = memberships.map(({ role, tenant }) => ({
     id: tenant.id, name: tenant.name, plan: activePlans.get(tenant.id) ?? 'Sin plan activo', initials: initials(tenant.name), role,

@@ -44,7 +44,7 @@ export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav, notificati
           className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Search className="size-4 shrink-0" />
-          <span className="flex-1 text-left">Search documents, clauses, reviews…</span>
+          <span className="flex-1 text-left">Buscar documentos, cláusulas y reseñas…</span>
           <kbd className="hidden items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
             ⌘K
           </kbd>
@@ -55,7 +55,7 @@ export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav, notificati
       <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
-          aria-label="Notifications"
+          aria-label="Notificaciones"
           className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Bell className="size-5" />
@@ -67,7 +67,7 @@ export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav, notificati
 
         <button
           type="button"
-          aria-label="Profile"
+          aria-label="Perfil"
           className="flex size-9 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent transition-transform hover:scale-105"
         >
           {userInitials}

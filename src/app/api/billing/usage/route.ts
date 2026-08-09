@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { translatePlanName } from '@/lib/dashboard-data'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   const used = Number(usage.used_units)
   const limit = Number(usage.document_limit)
   return NextResponse.json({
-    planCode: usage.plan_code, planName: plan?.name ?? usage.plan_code,
+    planCode: usage.plan_code, planName: translatePlanName(plan?.name ?? usage.plan_code),
     used, limit, remaining: Number(usage.remaining_units), percentage: limit ? Math.min(100, Math.round((used / limit) * 100)) : 0,
     periodStart: usage.period_start, periodEnd: usage.period_end, blocked: used >= limit,
   }, { headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })

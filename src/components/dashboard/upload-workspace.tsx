@@ -35,7 +35,7 @@ interface AnalysisResult {
 const MAX_FILES = 6
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick Action Workspace' }: { tenantId: string; module?: 'docaudit' | 'leasereader'; title?: string }) {
+export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Análisis rápido' }: { tenantId: string; module?: 'docaudit' | 'leasereader'; title?: string }) {
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<UploadFile[]>([])
   const [model, setModel] = useState(aiModels[0])
@@ -139,7 +139,7 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
       <div className="flex items-center justify-between gap-3 border-b border-border p-5">
         <div>
           <h2 className="text-base font-semibold text-card-foreground">{title}</h2>
-          <p className="text-sm text-muted-foreground">Instant AI analysis for any document</p>
+          <p className="text-sm text-muted-foreground">Análisis inmediato con IA para tus documentos</p>
         </div>
 
         {/* Model selector */}
@@ -221,10 +221,10 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
             <p className="text-sm font-medium text-foreground">
               Sube PDF, XML, TXT, MD, JSON o CSV
             </p>
-            <p className="text-sm text-muted-foreground">for Instant AI Analysis</p>
+            <p className="text-sm text-muted-foreground">para análisis inmediato con IA</p>
           </div>
           <Button size="sm" variant="outline" className="pointer-events-none mt-1">
-            Browse files
+            Seleccionar archivos
           </Button>
         </div>
 
@@ -256,7 +256,7 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
                           file.error ? (
                             <span className="text-destructive font-medium">Error</span>
                           ) : (
-                            <span className="text-emerald-500 font-medium">Analyzed</span>
+                            <span className="text-emerald-500 font-medium">Analizado</span>
                           )
                         ) : (
                           <>
@@ -278,7 +278,7 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
                   <button
                     type="button"
                     onClick={() => removeFile(file.id)}
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={`Quitar ${file.name}`}
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <X className="size-4" />
@@ -289,7 +289,7 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
                 {file.result && (
                   <div className="mt-2 rounded-md bg-card p-3 text-xs font-mono border border-border text-card-foreground overflow-x-auto">
                     <p className="font-sans font-semibold text-emerald-500 mb-1 flex items-center gap-1">
-                      <Sparkles className="size-3" /> Gemini AI Analysis Result:
+                      <Sparkles className="size-3" /> Resultado del análisis con Gemini:
                     </p>
                     <pre className="text-[11px] leading-relaxed">
                       {JSON.stringify(file.result, null, 2)}
@@ -308,7 +308,7 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick 
         {files.length === 0 && (
           <div className="mt-auto flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
             <Sparkles className="size-3.5 shrink-0 text-primary" />
-            Analyzing with{' '}
+            Se analizará con{' '}
             <span className="font-medium text-foreground">{model.name}</span> · {model.tag}
           </div>
         )}

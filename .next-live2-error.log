@@ -1,0 +1,84 @@
+⨯ Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([ {
+  digest: '2517756389'
+}
+{"timestamp":"2026-08-09T21:16:45.144Z","service":"kronova","level":"error","trace_id":"6871324c-05bd-4968-8a66-9a7b20368860","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:16:45.186Z","service":"kronova","level":"error","trace_id":"6871324c-05bd-4968-8a66-9a7b20368860","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:16:45.399Z","service":"kronova","level":"error","trace_id":"6871324c-05bd-4968-8a66-9a7b20368860","source":"observability","event":"persistence_failed","error_code":"PGRST205","attributes":{}}
+[browser] Uncaught Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([
+[browser] Uncaught Error: An unexpected response was received from the server.
+    at form (<anonymous>)
+    at LoginPage (src\app\login\page.tsx:9:5)
+   7 |   return <AuthShell title="Iniciar sesión" description="Accede de forma segura a tu espaci...
+   8 |     <AuthNotice error={params.error} message={params.message} />
+>  9 |     <form action={login} className="space-y-4">
+     |     ^
+  10 |       <input type="hidden" name="next" value={params.next ?? '/dashboard'} />
+  11 |       <label className="block text-sm font-medium">Correo electrónico<input className={inp...
+  12 |       <label className="block text-sm font-medium">Contraseña<input className={inputClass}...
+⨯ Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([ {
+  digest: '2517756389'
+}
+{"timestamp":"2026-08-09T21:17:37.841Z","service":"kronova","level":"error","trace_id":"96e7ab09-ee5b-44ca-9d2b-2fdda03077d5","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:17:37.845Z","service":"kronova","level":"error","trace_id":"96e7ab09-ee5b-44ca-9d2b-2fdda03077d5","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:17:38.042Z","service":"kronova","level":"error","trace_id":"96e7ab09-ee5b-44ca-9d2b-2fdda03077d5","source":"observability","event":"persistence_failed","error_code":"PGRST205","attributes":{}}
+⨯ Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([ {
+  digest: '2517756389'
+}
+{"timestamp":"2026-08-09T21:17:38.062Z","service":"kronova","level":"error","trace_id":"97f30d1c-ae88-4f66-9fda-d57b000dea05","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:17:38.065Z","service":"kronova","level":"error","trace_id":"97f30d1c-ae88-4f66-9fda-d57b000dea05","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:17:38.252Z","service":"kronova","level":"error","trace_id":"97f30d1c-ae88-4f66-9fda-d57b000dea05","source":"observability","event":"persistence_failed","error_code":"PGRST205","attributes":{}}
+⨯ Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([ {
+  digest: '2517756389'
+}
+{"timestamp":"2026-08-09T21:17:43.651Z","service":"kronova","level":"error","trace_id":"88018c72-a8df-4efe-8c4c-7ccb2a0ad35c","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+{"timestamp":"2026-08-09T21:17:43.657Z","service":"kronova","level":"error","trace_id":"88018c72-a8df-4efe-8c4c-7ccb2a0ad35c","source":"next","event":"unhandled_request_error","error_code":"2517756389","attributes":{"route":"/dashboard","method":"GET","httpStatus":500}}
+[browser] Uncaught Error: No fue posible cargar las organizaciones autorizadas.
+    at Page (src\app\dashboard\page.tsx:27:30)
+  25 |     searchParams,
+  26 |   ])
+> 27 |   if (membershipError) throw new Error('No fue posible cargar las organizaciones autorizad...
+     |                              ^
+  28 |   const memberships = (rawMemberships ?? []) as unknown as MembershipRow[]
+  29 |   const tenantIds = memberships.map(({ tenant }) => tenant.id)
+  30 |   const [{ data: subscriptions }, { data: plans }] = tenantIds.length ? await Promise.all([
+{"timestamp":"2026-08-09T21:17:43.860Z","service":"kronova","level":"error","trace_id":"88018c72-a8df-4efe-8c4c-7ccb2a0ad35c","source":"observability","event":"persistence_failed","error_code":"PGRST205","attributes":{}}

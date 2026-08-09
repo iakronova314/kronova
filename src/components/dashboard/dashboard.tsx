@@ -28,11 +28,18 @@ export function Dashboard({ user, organizations, activeOrganization, notice }: {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [activeModule, setActiveModule] = useState<ModuleId>('overview')
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem('kronova-theme') === 'light' ? 'light' : 'dark',
+  )
   const [utilityView, setUtilityView] = useState<UtilityViewId>(null)
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [overviewLoading, setOverviewLoading] = useState(true)
   const [entitlements, setEntitlements] = useState<{ status: string; allowedModules: ModuleId[]; planName?: string; trialEndsAt?: string | null }>({ status: 'loading', allowedModules: [] })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    window.localStorage.setItem('kronova-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -78,11 +85,7 @@ export function Dashboard({ user, organizations, activeOrganization, notice }: {
   }, [])
 
   const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark'
-      document.documentElement.classList.toggle('dark', next === 'dark')
-      return next
-    })
+    setTheme((prev) => prev === 'dark' ? 'light' : 'dark')
   }
 
   const changeModule = (id: ModuleId) => {
@@ -147,7 +150,7 @@ export function Dashboard({ user, organizations, activeOrganization, notice }: {
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}
-              aria-label="Close navigation"
+              aria-label="Cerrar navegación"
               className="absolute top-3.5 -right-11 flex size-9 items-center justify-center rounded-lg bg-card text-muted-foreground"
             >
               <X className="size-5" />
