@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kronova.app/leasereader/co/1.0.0/result.schema.json",
+  "title": "LeaseReader Colombia result v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "analysis", "legalPackage", "source", "evidence", "facts", "risks", "conclusion", "trace"],
+  "properties": {
+    "schema": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "const": "leasereader-result" }, "version": { "const": "1.0.0" } } },
+    "analysis": { "type": "object", "additionalProperties": false, "required": ["id", "documentId", "jurisdiction", "generatedAt", "locale", "status"], "properties": {
+      "id": { "$ref": "#/$defs/uuid" }, "documentId": { "$ref": "#/$defs/uuid" }, "jurisdiction": { "const": "CO" },
+      "generatedAt": { "type": "string", "format": "date-time" }, "locale": { "enum": ["es-CO", "en"] }, "status": { "enum": ["completed", "partial"] }
+    } },
+    "legalPackage": { "type": "object", "additionalProperties": false, "required": ["id", "version", "effectiveDate", "scope", "reviewedByProfessional"], "properties": {
+      "id": { "type": "string", "minLength": 1 }, "version": { "$ref": "#/$defs/version" }, "effectiveDate": { "type": "string", "format": "date" },
+      "scope": { "type": "string", "minLength": 1 }, "reviewedByProfessional": { "type": "boolean" }
+    } },
+    "source": { "type": "object", "additionalProperties": false, "required": ["primaryArtifactId", "format", "artifacts", "limitations"], "properties": {
+      "primaryArtifactId": { "type": "string", "minLength": 1 }, "format": { "enum": ["pdf", "image", "docx", "text"] },
+      "artifacts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+      "limitations": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+    } },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "facts": { "$ref": "#/$defs/facts" },
+    "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
+    "conclusion": { "type": "object", "additionalProperties": false, "required": ["outcome", "summary", "riskCounts", "confidence", "disclaimerCode"], "properties": {
+      "outcome": { "enum": ["no_material_risks", "risks_identified", "manual_review_required", "insufficient_evidence"] }, "summary": { "type": "string" },
+      "riskCounts": { "type": "object", "additionalProperties": false, "required": ["info", "low", "medium", "high", "critical"], "properties": {
+        "info": { "$ref": "#/$defs/count" }, "low": { "$ref": "#/$defs/count" }, "medium": { "$ref": "#/$defs/count" }, "high": { "$ref": "#/$defs/count" }, "critical": { "$ref": "#/$defs/count" }
+      } },
+      "confidence": { "$ref": "#/$defs/confidence" }, "disclaimerCode": { "const": "SUPPORT_TOOL_NOT_LEGAL_ADVICE" }
+    } },
+    "trace": { "type": "object", "additionalProperties": false, "required": ["extractor", "rules", "ai"], "properties": {
+      "extractor": { "$ref": "#/$defs/nameVersion" },
+      "rules": { "type": "object", "additionalProperties": false, "required": ["packageId", "version"], "properties": { "packageId": { "type": "string" }, "version": { "$ref": "#/$defs/version" } } },
+      "ai": { "type": "object", "additionalProperties": false, "required": ["used", "provider", "model", "promptVersion"], "properties": {
+        "used": { "type": "boolean" }, "provider": { "type": ["string", "null"] }, "model": { "type": ["string", "null"] }, "promptVersion": { "type": ["string", "null"] }
+      } }
+    } }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "fact": { "type": "object", "additionalProperties": false, "required": ["value", "method", "confidence", "evidenceIds"], "properties": {
+      "value": {}, "method": { "enum": ["pdf_text", "ocr", "ai", "derived", "human", "not_observed"] }, "confidence": { "$ref": "#/$defs/confidence" },
+      "evidenceIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+    } },
+    "artifact": { "type": "object", "additionalProperties": false, "required": ["id", "mimeType", "sha256", "pageCount"], "properties": {
+      "id": { "type": "string", "minLength": 1 }, "mimeType": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "pageCount": { "type": ["integer", "null"], "minimum": 1 }
+    } },
+    "evidence": { "type": "object", "additionalProperties": false, "required": ["id", "kind", "artifactId", "page", "locator", "boundingBox", "excerpt"], "properties": {
+      "id": { "type": "string", "minLength": 1 }, "kind": { "enum": ["pdf_region", "document_section", "calculation", "external_response"] }, "artifactId": { "type": "string", "minLength": 1 },
+      "page": { "type": ["integer", "null"], "minimum": 1 }, "locator": { "type": "string", "minLength": 1 },
+      "boundingBox": { "oneOf": [{ "type": "null" }, { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number", "minimum": 0, "maximum": 1 } }] },
+      "excerpt": { "type": ["string", "null"] }
+    } },
+    "factMap": { "type": "object", "additionalProperties": { "$ref": "#/$defs/fact" } },
+    "party": { "type": "object", "additionalProperties": false, "required": ["id", "role", "legalName", "identificationType", "identificationNumber", "email", "phone", "noticeAddress", "representativeName", "representativeIdentification"], "properties": {
+      "id": { "type": "string" }, "role": { "$ref": "#/$defs/fact" }, "legalName": { "$ref": "#/$defs/fact" }, "identificationType": { "$ref": "#/$defs/fact" },
+      "identificationNumber": { "$ref": "#/$defs/fact" }, "email": { "$ref": "#/$defs/fact" }, "phone": { "$ref": "#/$defs/fact" }, "noticeAddress": { "$ref": "#/$defs/fact" },
+      "representativeName": { "$ref": "#/$defs/fact" }, "representativeIdentification": { "$ref": "#/$defs/fact" }
+    } },
+    "increase": { "type": "object", "additionalProperties": false, "required": ["id", "effectiveDate", "frequencyMonths", "mechanism", "rate", "indexName", "cap", "floor", "formula"], "properties": {
+      "id": { "type": "string" }, "effectiveDate": { "$ref": "#/$defs/fact" }, "frequencyMonths": { "$ref": "#/$defs/fact" }, "mechanism": { "$ref": "#/$defs/fact" },
+      "rate": { "$ref": "#/$defs/fact" }, "indexName": { "$ref": "#/$defs/fact" }, "cap": { "$ref": "#/$defs/fact" }, "floor": { "$ref": "#/$defs/fact" }, "formula": { "$ref": "#/$defs/fact" }
+    } },
+    "penalty": { "type": "object", "additionalProperties": false, "required": ["id", "trigger", "liableParty", "amount", "rentMultiples", "percentage", "calculationBasis", "gracePeriodDays", "cumulative"], "properties": {
+      "id": { "type": "string" }, "trigger": { "$ref": "#/$defs/fact" }, "liableParty": { "$ref": "#/$defs/fact" }, "amount": { "$ref": "#/$defs/fact" }, "rentMultiples": { "$ref": "#/$defs/fact" },
+      "percentage": { "$ref": "#/$defs/fact" }, "calculationBasis": { "$ref": "#/$defs/fact" }, "gracePeriodDays": { "$ref": "#/$defs/fact" }, "cumulative": { "$ref": "#/$defs/fact" }
+    } },
+    "termination": { "type": "object", "additionalProperties": false, "required": ["id", "entitledParty", "grounds", "withoutCauseAllowed", "noticeDays", "noticeChannels", "penaltyIds", "curePeriodDays", "conditions"], "properties": {
+      "id": { "type": "string" }, "entitledParty": { "$ref": "#/$defs/fact" }, "grounds": { "$ref": "#/$defs/fact" }, "withoutCauseAllowed": { "$ref": "#/$defs/fact" },
+      "noticeDays": { "$ref": "#/$defs/fact" }, "noticeChannels": { "$ref": "#/$defs/fact" }, "penaltyIds": { "type": "array", "items": { "type": "string" } },
+      "curePeriodDays": { "$ref": "#/$defs/fact" }, "conditions": { "$ref": "#/$defs/fact" }
+    } },
+    "clause": { "type": "object", "additionalProperties": false, "required": ["id", "heading", "text", "clauseNumber"], "properties": {
+      "id": { "type": "string" }, "heading": { "$ref": "#/$defs/fact" }, "text": { "$ref": "#/$defs/fact" }, "clauseNumber": { "$ref": "#/$defs/fact" }
+    } },
+    "facts": { "type": "object", "additionalProperties": false, "required": ["document", "parties", "property", "term", "financial", "increases", "renewal", "penalties", "termination", "clauses"], "properties": {
+      "document": { "$ref": "#/$defs/factMap" }, "parties": { "type": "array", "items": { "$ref": "#/$defs/party" } }, "property": { "$ref": "#/$defs/factMap" },
+      "term": { "$ref": "#/$defs/factMap" }, "financial": { "$ref": "#/$defs/factMap" }, "increases": { "type": "array", "items": { "$ref": "#/$defs/increase" } },
+      "renewal": { "$ref": "#/$defs/factMap" }, "penalties": { "type": "array", "items": { "$ref": "#/$defs/penalty" } },
+      "termination": { "type": "array", "items": { "$ref": "#/$defs/termination" } }, "clauses": { "type": "array", "items": { "$ref": "#/$defs/clause" } }
+    } },
+    "risk": { "type": "object", "additionalProperties": false, "required": ["id", "code", "category", "severity", "title", "description", "confidence", "factPaths", "clauseIds", "evidenceIds", "observed", "expected", "recommendation", "requiresProfessionalReview", "rule"], "properties": {
+      "id": { "type": "string" }, "code": { "type": "string", "pattern": "^CO-LEASE-[A-Z0-9_-]+$" },
+      "category": { "enum": ["identity", "property", "term", "financial", "increase", "renewal", "notice", "penalty", "termination", "completeness", "legal_review"] },
+      "severity": { "enum": ["info", "low", "medium", "high", "critical"] }, "title": { "type": "string" }, "description": { "type": "string" }, "confidence": { "$ref": "#/$defs/confidence" },
+      "factPaths": { "type": "array", "items": { "type": "string" } }, "clauseIds": { "type": "array", "items": { "type": "string" } }, "evidenceIds": { "type": "array", "items": { "type": "string" } },
+      "observed": {}, "expected": {}, "recommendation": { "type": "string" }, "requiresProfessionalReview": { "type": "boolean" },
+      "rule": { "type": "object", "additionalProperties": false, "required": ["id", "version", "legalReference"], "properties": { "id": { "type": "string" }, "version": { "$ref": "#/$defs/version" }, "legalReference": { "type": ["string", "null"] } } }
+    } },
+    "nameVersion": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "$ref": "#/$defs/version" } } }
+  }
+}

@@ -1,0 +1,66 @@
+name: Formal production validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha: { description: Release commit SHA, required: true }
+      live_payment_evidence: { description: Stripe payment/refund evidence reference, required: true }
+      restore_drill_evidence: { description: Successful recovery drill run/reference, required: true }
+      approve_controlled_load: { description: Type APPROVE to run controlled production load, required: true }
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production-validation
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.release_sha }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Read-only production RLS and quota contract
+        env: { PRODUCTION_DATABASE_URL: "${{ secrets.PRODUCTION_DATABASE_URL }}" }
+        run: psql "$PRODUCTION_DATABASE_URL" -f scripts/production-readiness.sql
+      - name: Production smoke
+        env: { DEPLOYMENT_URL: "${{ vars.PRODUCTION_URL }}" }
+        run: npm run test:smoke
+      - name: Controlled load test
+        if: inputs.approve_controlled_load == 'APPROVE'
+        env:
+          LOAD_TEST_URL: ${{ vars.PRODUCTION_URL }}
+          LOAD_TEST_REQUESTS: '500'
+          LOAD_TEST_CONCURRENCY: '20'
+        run: npm run test:load | tee load-result.json
+      - name: Fail if load was not explicitly approved
+        if: inputs.approve_controlled_load != 'APPROVE'
+        run: exit 1
+      - name: Validate live Stripe configuration without charging
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.PRODUCTION_STRIPE_SECRET_KEY }}
+          STRIPE_PRICE_STARTER: ${{ vars.PRODUCTION_STRIPE_PRICE_STARTER }}
+          STRIPE_PRICE_GROWTH: ${{ vars.PRODUCTION_STRIPE_PRICE_GROWTH }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: npm run validate:stripe-live | tee stripe-result.json
+      - name: Require human payment and recovery evidence
+        env:
+          PAYMENT_EVIDENCE: ${{ inputs.live_payment_evidence }}
+          RESTORE_EVIDENCE: ${{ inputs.restore_drill_evidence }}
+        run: test "${#PAYMENT_EVIDENCE}" -ge 8 && test "${#RESTORE_EVIDENCE}" -ge 8
+      - name: Formal evidence manifest
+        run: |
+          printf '%s\n' "status=APPROVED" "release_sha=${{ inputs.release_sha }}" "payment_evidence=${{ inputs.live_payment_evidence }}" "restore_evidence=${{ inputs.restore_drill_evidence }}" "approved_at=$(date -u +%FT%TZ)" > production-approval.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formal-production-approval
+          path: |
+            production-approval.txt
+            load-result.json
+            stripe-result.json
+          retention-days: 365

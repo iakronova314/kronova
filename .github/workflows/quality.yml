@@ -1,0 +1,75 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  automatic-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - name: Start Supabase and export local credentials
+        shell: bash
+        run: |
+          supabase start
+          supabase status -o env > /tmp/supabase.env
+          source /tmp/supabase.env
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "TEST_DATABASE_URL=$DB_URL"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
+            echo "TEST_BASE_URL=http://127.0.0.1:3000"
+            echo "PLAYWRIGHT_EXTERNAL_SERVER=true"
+            echo "CRON_SECRET=ci-cron-secret"
+            echo "STRIPE_BILLING_ENABLED=true"
+            echo "STRIPE_SECRET_KEY=sk_test_ci_fixture"
+            echo "STRIPE_WEBHOOK_SECRET=whsec_ci_automatic_tests"
+          } >> "$GITHUB_ENV"
+      - name: Supabase and RLS tests
+        shell: bash
+        run: for test_file in supabase/tests/*.sql; do psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$test_file"; done
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - name: Start application
+        shell: bash
+        run: |
+          npm run start > /tmp/kronova.log 2>&1 &
+          for attempt in {1..60}; do curl --fail --silent http://127.0.0.1:3000/login >/dev/null && exit 0; sleep 1; done
+          cat /tmp/kronova.log
+          exit 1
+      - run: npm test
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

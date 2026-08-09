@@ -32,14 +32,14 @@ export async function register(data: FormData) {
   const fullName = field(data, 'fullName')
   const organizationName = field(data, 'organizationName')
   const password = field(data, 'password')
-  if (fullName.length < 2 || organizationName.length < 2 || password.length < 8 || password !== field(data, 'confirmPassword')) {
+  if (fullName.length < 2 || organizationName.length < 2 || password.length < 8 || password !== field(data, 'confirmPassword') || field(data, 'legalConsent') !== 'accepted') {
     redirect(resultUrl('/register', 'error', 'Revisa el nombre y usa dos contraseñas iguales de al menos 8 caracteres.'))
   }
   const supabase = await createClient()
   const { data: signup, error } = await supabase.auth.signUp({
     email: field(data, 'email'), password,
     options: {
-      data: { full_name: fullName, organization_name: organizationName },
+      data: { full_name: fullName, organization_name: organizationName, legal_consent_version: '2026-08-09', legal_consent_at: new Date().toISOString() },
       emailRedirectTo: `${await requestOrigin()}/auth/callback?next=/dashboard`,
     },
   })

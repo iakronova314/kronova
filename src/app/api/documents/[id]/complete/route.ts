@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { DOCAUDIT_SCHEMA_VERSION } from '@/modules/docaudit/colombia/schemas/v1'
 import { createClient } from '@/lib/supabase/server'
 
 export const maxDuration = 20
@@ -67,14 +68,12 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     return reply({ error: 'No fue posible confirmar la carga.' }, 500)
   }
   const idempotencyKey = `document:${id}:pipeline:v1`
-  const { data: existingJob } = await admin.from('analysis_jobs').select('id,status').eq('tenant_id', document.tenant_id).eq('idempotency_key', idempotencyKey).maybeSingle()
-  if (existingJob) return reply({ success: true, documentId: id, sha256: hash, status: 'uploaded', jobId: existingJob.id, jobStatus: existingJob.status }, 202)
-  const { data: job, error: jobError } = await admin.from('analysis_jobs').insert({
-    tenant_id: document.tenant_id, document_id: id, requested_by: userId,
-    job_type: 'document_pipeline', status: 'queued', progress: 0,
-    idempotency_key: idempotencyKey, schema_version: 'v1', max_attempts: 3,
-  }).select('id,status').single()
-  if (jobError || !job) return reply({ error: 'El documento fue almacenado, pero no fue posible crear el trabajo.' }, 500)
-  await admin.from('documents').update({ status: 'queued' }).eq('id', id).eq('tenant_id', document.tenant_id)
-  return reply({ success: true, documentId: id, sha256: hash, status: 'queued', jobId: job.id, jobStatus: job.status }, 202)
+  const { data: reservations, error: jobError } = await admin.rpc('create_analysis_job_with_quota', {
+    target_tenant_id: document.tenant_id, target_document_id: id, requesting_user_id: userId,
+    target_idempotency_key: idempotencyKey, target_schema_version: DOCAUDIT_SCHEMA_VERSION,
+  })
+  const reservation = Array.isArray(reservations) ? reservations[0] : reservations
+  if (jobError) return reply({ error: 'El documento fue almacenado, pero no fue posible reservar la cuota.' }, 500)
+  if (!reservation?.allowed) return reply({ error: 'Alcanzaste el límite de documentos del periodo.', code: 'DOCUMENT_QUOTA_EXCEEDED', usage: { used: reservation?.used_units ?? 0, limit: reservation?.document_limit ?? 300, periodEnd: reservation?.period_end } }, 402)
+  return reply({ success: true, documentId: id, sha256: hash, status: 'queued', jobId: reservation.job_id, jobStatus: reservation.job_status, usage: { used: reservation.used_units, limit: reservation.document_limit, periodEnd: reservation.period_end } }, 202)
 }

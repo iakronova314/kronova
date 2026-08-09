@@ -1,0 +1,4 @@
+import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { authorizeBillingAdmin } from '@/lib/server/billing/access'
+export async function PATCH(request:Request){const body=await request.json() as {tenantId?:unknown;name?:unknown};const auth=await authorizeBillingAdmin(body.tenantId);if(!auth.ok)return NextResponse.json({error:auth.error},{status:auth.status});if(typeof body.name!=='string'||body.name.trim().length<2||body.name.trim().length>100)return NextResponse.json({error:'Nombre inválido.'},{status:400});const{error}=await createAdminClient().from('tenants').update({name:body.name.trim()}).eq('id',auth.tenantId);if(error)return NextResponse.json({error:'No fue posible actualizar la organización.'},{status:500});return NextResponse.json({success:true,name:body.name.trim()})}

@@ -1,0 +1,48 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, FileText, Loader2, RefreshCw, Save, ShieldAlert } from 'lucide-react'
+import type { Fact, LeaseReaderResultV1, RiskSeverity } from '@/modules/leasereader/colombia/schemas/v1/types'
+import { UploadWorkspace } from './upload-workspace'
+
+type Item = { id: string; original_name: string; status: string; created_at: string; result: { result: LeaseReaderResultV1 } | null }
+type Review = { decision: string; note: string | null; corrections: Array<{ path: string; value: unknown }>; decided_at: string }
+type Detail = { document: Item; result: { result: LeaseReaderResultV1 }; review: Review | null; deadlines: Array<{ id: string; title: string; due_at: string; kind: string }>; canReview: boolean; error?: string }
+const riskStyle: Record<RiskSeverity, string> = { info: 'border-sky-500/30', low: 'border-emerald-500/30', medium: 'border-amber-500/30', high: 'border-orange-500/40', critical: 'border-red-500/50' }
+
+const rows = [
+  ['facts.parties.0.legalName', 'Arrendador', (r: LeaseReaderResultV1) => r.facts.parties[0]?.legalName],
+  ['facts.parties.1.legalName', 'Arrendatario', (r: LeaseReaderResultV1) => r.facts.parties[1]?.legalName],
+  ['facts.property.address', 'Inmueble', (r: LeaseReaderResultV1) => r.facts.property.address],
+  ['facts.term.startDate', 'Inicio', (r: LeaseReaderResultV1) => r.facts.term.startDate],
+  ['facts.term.endDate', 'Terminación', (r: LeaseReaderResultV1) => r.facts.term.endDate],
+  ['facts.financial.rent', 'Canon', (r: LeaseReaderResultV1) => r.facts.financial.rent],
+  ['facts.financial.deposit', 'Depósito', (r: LeaseReaderResultV1) => r.facts.financial.deposit],
+  ['facts.renewal.noticeDays', 'Preaviso (días)', (r: LeaseReaderResultV1) => r.facts.renewal.noticeDays],
+] as const
+
+function display(fact: Fact<unknown> | undefined) {
+  if (!fact || fact.value === null) return ''
+  if (typeof fact.value === 'object') return JSON.stringify(fact.value)
+  return String(fact.value)
+}
+
+export function LeaseReaderWorkspace({ tenantId }: { tenantId: string }) {
+  const [items, setItems] = useState<Item[]>([]); const [selected, setSelected] = useState<string>(); const [detail, setDetail] = useState<Detail>()
+  const [loading, setLoading] = useState(true); const [error, setError] = useState<string>(); const [corrections, setCorrections] = useState<Record<string, string>>({}); const [note, setNote] = useState(''); const [saving, setSaving] = useState(false)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { const response = await fetch(`/api/documents?tenantId=${encodeURIComponent(tenantId)}&module=leasereader&pageSize=20`); const data = await response.json(); if (!response.ok) throw new Error(data.error); setItems(data.items ?? []); setSelected((value) => value ?? data.items?.find((item: Item) => item.status === 'completed')?.id) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'No fue posible cargar contratos.') } finally { setLoading(false) }
+  }, [tenantId])
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer) }, [load])
+  useEffect(() => { if (!selected) return; const controller = new AbortController(); fetch(`/api/documents/${selected}/leasereader`, { signal: controller.signal }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setDetail(data); setNote(data.review?.note ?? ''); setCorrections(Object.fromEntries((data.review?.corrections ?? []).map((item: { path: string; value: unknown }) => [item.path, String(item.value ?? '')]))) }).catch((cause) => { if (cause instanceof Error && cause.name !== 'AbortError') setError(cause.message) }); return () => controller.abort() }, [selected])
+  const report = detail?.result.result
+  const effectiveRows = useMemo(() => report ? rows.map(([path, label, getter]) => ({ path, label, fact: getter(report) as Fact<unknown> | undefined })) : [], [report])
+  async function save(decision: 'approved' | 'rejected' | 'needs_review') {
+    if (!selected) return; setSaving(true)
+    try { const response = await fetch(`/api/documents/${selected}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, note, corrections: Object.entries(corrections).filter(([, value]) => value.trim()).map(([path, value]) => ({ path, value })) }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setDetail((current) => current ? { ...current, review: data.review } : current) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'No fue posible guardar la revisión.') } finally { setSaving(false) }
+  }
+  return <div className="space-y-6"><UploadWorkspace tenantId={tenantId} module="leasereader" title="Analizar contrato inmobiliario" /><section className="rounded-xl border border-border bg-card"><header className="flex items-center justify-between border-b border-border p-4"><div><h2 className="font-semibold">Contratos analizados</h2><p className="text-sm text-muted-foreground">Datos, cláusulas críticas y revisión humana</p></div><button onClick={() => void load()} className="grid size-9 place-items-center rounded-lg border border-border"><RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} /></button></header><div className="grid min-h-96 lg:grid-cols-[280px_1fr]"><aside className="border-r border-border p-3">{items.map((item) => <button key={item.id} onClick={() => setSelected(item.id)} className={`mb-2 flex w-full items-center gap-2 rounded-lg border p-3 text-left ${selected === item.id ? 'border-primary bg-primary/10' : 'border-border'}`}><FileText className="size-4" /><span className="min-w-0 flex-1 truncate text-sm">{item.original_name}</span><span className="text-xs text-muted-foreground">{item.status}</span></button>)}{!items.length && !loading && <p className="p-3 text-sm text-muted-foreground">Aún no hay contratos.</p>}</aside><main className="p-5">{selected && !report && <Loader2 className="size-5 animate-spin" />}{report && <div className="space-y-6"><div><h3 className="text-lg font-semibold">Resumen</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{report.conclusion.summary}</p></div>{detail?.deadlines?.length > 0 && <div><h3 className="mb-2 font-semibold">Próximos vencimientos</h3><div className="grid gap-2 sm:grid-cols-2">{detail.deadlines.map((deadline) => <div key={deadline.id} className="rounded-lg border border-primary/25 bg-primary/5 p-3"><p className="text-sm font-medium">{deadline.title}</p><p className="mt-1 text-xs text-muted-foreground">{new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeZone: 'America/Bogota' }).format(new Date(deadline.due_at))}</p></div>)}</div></div>}<div><h3 className="mb-2 font-semibold">Datos extraídos</h3><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-left text-muted-foreground"><th className="p-2">Campo</th><th className="p-2">Valor automático</th><th className="p-2">Confianza</th><th className="p-2">Corrección humana</th></tr></thead><tbody>{effectiveRows.map(({ path, label, fact }) => <tr key={path} className="border-b border-border/60"><td className="p-2 font-medium">{label}</td><td className="p-2">{display(fact) || 'No observado'}</td><td className="p-2">{Math.round((fact?.confidence ?? 0) * 100)}%</td><td className="p-2"><input aria-label={`Corregir ${label}`} value={corrections[path] ?? ''} onChange={(event) => setCorrections((value) => ({ ...value, [path]: event.target.value }))} className="h-8 w-full min-w-40 rounded border border-border bg-background px-2" /></td></tr>)}</tbody></table></div></div><div><h3 className="mb-2 font-semibold">Riesgos y cláusulas críticas</h3><div className="grid gap-3">{report.risks.map((risk) => <article key={risk.id} className={`rounded-lg border p-4 ${riskStyle[risk.severity]}`}><div className="flex items-center gap-2"><ShieldAlert className="size-4" /><h4 className="font-medium">{risk.title}</h4><span className="ml-auto text-xs uppercase">{risk.severity}</span></div><p className="mt-2 text-sm text-muted-foreground">{risk.description}</p><p className="mt-2 text-xs">{risk.recommendation}</p></article>)}{!report.risks.length && <p className="text-sm text-muted-foreground">No se detectaron señales críticas automáticas.</p>}</div></div>{detail?.canReview && <div className="rounded-lg border border-border p-4"><h3 className="font-semibold">Revisión humana</h3><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} placeholder="Observaciones del revisor" className="mt-3 min-h-20 w-full rounded-lg border border-border bg-background p-2 text-sm" /><div className="mt-3 flex flex-wrap gap-2"><button disabled={saving} onClick={() => void save('approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white"><CheckCircle2 className="mr-1 inline size-4" />Aprobar</button><button disabled={saving} onClick={() => void save('needs_review')} className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white"><Save className="mr-1 inline size-4" />Guardar correcciones</button><button disabled={saving} onClick={() => void save('rejected')} className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white">Rechazar</button></div>{detail.review && <p className="mt-2 text-xs text-muted-foreground">Última decisión: {detail.review.decision}</p>}</div>}</div>}</main></div></section>{error && <p role="alert" className="text-sm text-red-300">{error}</p>}</div>
+}

@@ -35,11 +35,12 @@ interface AnalysisResult {
 const MAX_FILES = 6
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-export function UploadWorkspace({ tenantId }: { tenantId: string }) {
+export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Quick Action Workspace' }: { tenantId: string; module?: 'docaudit' | 'leasereader'; title?: string }) {
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<UploadFile[]>([])
   const [model, setModel] = useState(aiModels[0])
   const [modelOpen, setModelOpen] = useState(false)
+  const [processingConsent, setProcessingConsent] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Función para enviar el contenido del archivo a la API de Gemini
@@ -49,7 +50,7 @@ export function UploadWorkspace({ tenantId }: { tenantId: string }) {
       const uploadResponse = await fetch('/api/documents/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Kronova-Tenant-Id': tenantId },
-        body: JSON.stringify({ fileName: file.name, mimeType, sizeBytes: file.size, module: 'docaudit' }),
+        body: JSON.stringify({ fileName: file.name, mimeType, sizeBytes: file.size, module, processingConsent }),
       })
       const upload = await uploadResponse.json() as { documentId?: string; path?: string; token?: string; error?: string }
       if (!uploadResponse.ok || !upload.documentId || !upload.path || !upload.token) throw new Error(upload.error ?? 'No fue posible preparar la carga.')
@@ -61,6 +62,7 @@ export function UploadWorkspace({ tenantId }: { tenantId: string }) {
       const completed = await completeResponse.json() as { error?: string; jobId?: string }
       if (!completeResponse.ok) throw new Error(completed.error ?? 'No fue posible validar el archivo almacenado.')
       if (!completed.jobId) throw new Error('No se recibió el identificador del trabajo.')
+      window.dispatchEvent(new Event('kronova:usage-updated'))
       setFiles((prev) => prev.map((item) => item.id === fileId ? { ...item, progress: 72, stage: 'En cola' } : item))
       for (let attempt = 0; attempt < 150; attempt++) {
         const response = await fetch(`/api/jobs/${completed.jobId}`)
@@ -84,7 +86,7 @@ export function UploadWorkspace({ tenantId }: { tenantId: string }) {
         ),
       )
     }
-  }, [tenantId])
+  }, [module, processingConsent, tenantId])
 
   const addFiles = useCallback((list: FileList | null) => {
     if (!list || list.length === 0) return
@@ -136,7 +138,7 @@ export function UploadWorkspace({ tenantId }: { tenantId: string }) {
     <section className="flex h-full flex-col rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border p-5">
         <div>
-          <h2 className="text-base font-semibold text-card-foreground">Quick Action Workspace</h2>
+          <h2 className="text-base font-semibold text-card-foreground">{title}</h2>
           <p className="text-sm text-muted-foreground">Instant AI analysis for any document</p>
         </div>
 
@@ -179,13 +181,14 @@ export function UploadWorkspace({ tenantId }: { tenantId: string }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-5">
+        <label className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"><input type="checkbox" className="mt-0.5" checked={processingConsent} onChange={(event)=>setProcessingConsent(event.target.checked)}/><span>Confirmo que mi organización está autorizada para tratar y cargar este documento, incluidos datos de terceros, y autorizo su procesamiento conforme a la Política de privacidad.</span></label>
         {/* Dropzone */}
         <div
           role="button"
           tabIndex={0}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => processingConsent && inputRef.current?.click()}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
+            if (processingConsent && (e.key === 'Enter' || e.key === ' ')) inputRef.current?.click()
           }}
           onDragOver={(e) => {
             e.preventDefault()

@@ -1,10 +1,9 @@
 import { Hexagon } from 'lucide-react'
+import Link from 'next/link'
 
 const LINKS = [
-  { label: 'Privacy', href: '#' },
-  { label: 'Terms', href: '#' },
-  { label: 'Docs', href: '#' },
-  { label: 'System Status', href: '#' },
+  { label: 'Privacidad', href: '/privacy' },
+  { label: 'Términos', href: '/terms' },
 ]
 
 export function SiteFooter() {
@@ -20,18 +19,18 @@ export function SiteFooter() {
 
         <nav className="flex flex-wrap items-center justify-center gap-6" aria-label="Footer">
           {LINKS.map((l) => (
-            <a
+            <Link
               key={l.label}
               href={l.href}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
         <p className="text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} KRONOVA Inc.
+          &copy; {new Date().getFullYear()} KRONOVA
         </p>
       </div>
     </footer>

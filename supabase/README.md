@@ -35,8 +35,18 @@ Migrations run in timestamp order:
 8. `20260802000800_enforce_document_deduplication.sql`
 9. `20260802000900_create_document_extractions.sql`
 10. `20260802001000_create_job_leasing.sql`
+11. `20260807000100_add_document_fiscal_identity.sql`
+12. `20260807000200_create_document_reviews.sql`
+13. `20260807000300_create_document_quota.sql`
+14. `20260809000100_create_plan_entitlements.sql`
+15. `20260809000200_add_leasereader_reviews.sql`
+16. `20260809000300_create_contract_deadlines.sql`
+17. `20260809000400_create_reviewsync_schema.sql`
+18. `20260809000500_create_api_keys.sql`
+19. `20260809000600_create_observability.sql`
+20. `20260809000700_create_privacy_controls.sql`
 
-The schema includes profiles, organizations, members, plans, billing customers, subscriptions, billing events, documents, analysis jobs, results, usage events, and alerts.
+The schema includes profiles, organizations, members, plans, billing customers, subscriptions, plan entitlements, billing events, documents, analysis jobs, results, human document reviews, usage events, and alerts.
 
 ## Security state
 

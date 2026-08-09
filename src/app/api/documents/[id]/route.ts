@@ -36,7 +36,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const admin = createAdminClient()
   const { error: storageError } = await admin.storage.from(access.document.bucket_name).remove([access.document.storage_path])
   if (storageError) return reply({ error: 'No fue posible eliminar el documento.' }, 502)
-  const { error: dbError } = await admin.from('documents').update({ status: 'deleted', deleted_at: new Date().toISOString() }).eq('id', id).eq('tenant_id', access.document.tenant_id)
-  if (dbError) return reply({ error: 'El archivo fue eliminado, pero no fue posible actualizar su registro.' }, 500)
+  const { error: dbError } = await admin.from('documents').delete().eq('id', id).eq('tenant_id', access.document.tenant_id)
+  if (dbError) return reply({ error: 'El archivo fue eliminado, pero no fue posible eliminar sus metadatos.' }, 500)
   return reply({ success: true })
 }

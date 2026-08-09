@@ -1,0 +1,31 @@
+name: Rollback production application
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: Previously healthy Vercel production deployment URL
+        required: true
+      incident:
+        description: Incident or change reference
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Reassign production domain to known-good deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.PRODUCTION_VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.PRODUCTION_VERCEL_PROJECT_ID }}
+        run: npx --yes vercel@58.9.0 rollback "${{ inputs.deployment_url }}" --token="$VERCEL_TOKEN"
+      - name: Verify rollback
+        env:
+          DEPLOYMENT_URL: ${{ vars.PRODUCTION_URL }}
+        run: npm run test:smoke

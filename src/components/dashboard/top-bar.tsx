@@ -7,9 +7,11 @@ interface TopBarProps {
   activeModule: ModuleId
   onOpenSearch: () => void
   onOpenMobileNav: () => void
+  notificationCount: number
+  userInitials: string
 }
 
-export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav }: TopBarProps) {
+export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav, notificationCount, userInitials }: TopBarProps) {
   const current = navModules.find((m) => m.id === activeModule) ?? navModules[0]
 
   return (
@@ -57,10 +59,10 @@ export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav }: TopBarPr
           className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Bell className="size-5" />
-          <span className="absolute top-2 right-2 flex size-2 items-center justify-center">
+          {notificationCount > 0 && <span className="absolute top-2 right-2 flex size-2 items-center justify-center">
             <span className="absolute inline-flex size-2 animate-ping rounded-full bg-accent opacity-70" />
             <span className="relative inline-flex size-2 rounded-full bg-accent" />
-          </span>
+          </span>}
         </button>
 
         <button
@@ -68,7 +70,7 @@ export function TopBar({ activeModule, onOpenSearch, onOpenMobileNav }: TopBarPr
           aria-label="Profile"
           className="flex size-9 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent transition-transform hover:scale-105"
         >
-          AR
+          {userInitials}
         </button>
       </div>
     </header>

@@ -1,3 +1,8 @@
 {
-  "crons": [{ "path": "/api/internal/jobs/process", "schedule": "* * * * *" }]
+  "crons": [
+    { "path": "/api/internal/jobs/process", "schedule": "* * * * *" },
+    { "path": "/api/internal/alerts/process", "schedule": "*/5 * * * *" },
+    { "path": "/api/internal/reviewsync/process", "schedule": "*/15 * * * *" },
+    { "path": "/api/internal/privacy/process", "schedule": "0 3 * * *" }
+  ]
 }

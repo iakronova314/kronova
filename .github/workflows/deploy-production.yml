@@ -1,0 +1,66 @@
+name: Promote production
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Tested commit SHA from staging
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  staged-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.git_ref }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - name: Build staged production deployment without domain
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.PRODUCTION_VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.PRODUCTION_VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@58.9.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          url=$(npx --yes vercel@58.9.0 deploy --prod --skip-domain --yes --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Apply forward-compatible production migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}"
+          supabase db push --linked --include-all
+          supabase db lint --linked --level error
+      - name: Smoke test staged deployment against production services
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npm run test:smoke
+      - name: Promote tested deployment to production domain
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.PRODUCTION_VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.PRODUCTION_VERCEL_PROJECT_ID }}
+        run: npx --yes vercel@58.9.0 promote "${{ steps.deploy.outputs.url }}" --yes --token="$VERCEL_TOKEN"
+      - name: Verify production domain
+        env:
+          DEPLOYMENT_URL: ${{ vars.PRODUCTION_URL }}
+        run: npm run test:smoke
+      - name: Release manifest
+        run: printf '%s\n' "git_ref=${{ inputs.git_ref }}" "deployment=${{ steps.deploy.outputs.url }}" "released_at=$(date -u +%FT%TZ)" > release-manifest.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: production-release-manifest, path: release-manifest.txt, retention-days: 90 }

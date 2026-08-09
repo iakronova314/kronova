@@ -352,11 +352,14 @@ Este documento reúne decisiones comerciales, legales y técnicas que todavía n
 
 ### PD-026 — Primera plataforma de ReviewSync
 
-- **Estado:** PENDIENTE
+- **Estado:** DECIDIDA
 - **Prioridad:** BAJA
 - **Resolver antes de:** Tarea 25.
-- **Pendiente:** elegir Google Business Profile, Facebook u otra plataforma y definir aprobación antes de publicar respuestas.
-- **Decisión:** Por definir.
+- **Fecha:** 9 de agosto de 2026.
+- **Responsable:** Producto y arquitectura KRONOVA.
+- **Decisión:** Google Business Profile será la única plataforma de v1. OAuth 2.0 usará `business.manage`; la sincronización será cada 15 minutos y las respuestas serán borradores asistidos con aprobación humana individual obligatoria. No habrá publicación automática ni masiva.
+- **Gate externo:** no iniciar el conector productivo hasta obtener acceso básico de Business Profile API y cuota mayor que cero.
+- **Detalle:** `docs/REVIEWSYNC-MVP-SCOPE.md`.
 
 ---
 

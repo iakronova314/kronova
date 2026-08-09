@@ -1,0 +1,74 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  migrate-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Apply staging migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ vars.STAGING_SUPABASE_PROJECT_REF }}"
+          supabase db push --linked --include-all
+          supabase db lint --linked --level error
+      - name: Execute staging database and RLS tests
+        env:
+          TEST_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: for test_file in supabase/tests/*.sql; do psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$test_file"; done
+      - name: Deploy isolated staging project
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.STAGING_VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.STAGING_VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@58.9.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          url=$(npx --yes vercel@58.9.0 deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Staging smoke tests
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npm run test:smoke
+      - name: Staging API integration
+        env:
+          TEST_BASE_URL: ${{ steps.deploy.outputs.url }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STAGING_STRIPE_SECRET_KEY }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npm run test:integration
+      - name: Staging E2E
+        env:
+          TEST_BASE_URL: ${{ steps.deploy.outputs.url }}
+          PLAYWRIGHT_EXTERNAL_SERVER: 'true'
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: staging-test-evidence
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

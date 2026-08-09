@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kronova.app/docaudit/co/1.0.0/result.schema.json",
+  "title": "DocAudit Colombia result v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "analysis", "regulatoryPackage", "source", "evidence", "facts", "findings", "conclusion", "trace"],
+  "properties": {
+    "schema": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "const": "docaudit-result" }, "version": { "const": "1.0.0" } } },
+    "analysis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "documentId", "jurisdiction", "generatedAt", "locale", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" }, "documentId": { "$ref": "#/$defs/uuid" },
+        "jurisdiction": { "const": "CO" }, "generatedAt": { "type": "string", "format": "date-time" },
+        "locale": { "enum": ["es-CO", "en"] }, "status": { "enum": ["completed", "partial"] }
+      }
+    },
+    "regulatoryPackage": {
+      "type": "object", "additionalProperties": false, "required": ["id", "version", "effectiveDate", "dianTechnicalAnnex"],
+      "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "$ref": "#/$defs/version" }, "effectiveDate": { "type": "string", "format": "date" }, "dianTechnicalAnnex": { "type": "string", "minLength": 1 } }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["primaryArtifactId", "format", "artifacts", "limitations"],
+      "properties": {
+        "primaryArtifactId": { "type": "string", "minLength": 1 }, "format": { "enum": ["xml", "attached_document", "zip", "pdf"] },
+        "artifacts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      }
+    },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "facts": { "$ref": "#/$defs/facts" },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "conclusion": {
+      "type": "object", "additionalProperties": false, "required": ["outcome", "summary", "findingCounts", "confidence", "disclaimerCode"],
+      "properties": {
+        "outcome": { "enum": ["pass", "pass_with_observations", "fail", "manual_review_required"] }, "summary": { "type": "string" },
+        "findingCounts": { "type": "object", "additionalProperties": false, "required": ["info", "warning", "error", "critical"], "properties": { "info": { "$ref": "#/$defs/count" }, "warning": { "$ref": "#/$defs/count" }, "error": { "$ref": "#/$defs/count" }, "critical": { "$ref": "#/$defs/count" } } },
+        "confidence": { "$ref": "#/$defs/confidence" }, "disclaimerCode": { "const": "SUPPORT_TOOL_NOT_PROFESSIONAL_ADVICE" }
+      }
+    },
+    "trace": {
+      "type": "object", "additionalProperties": false, "required": ["parser", "rules", "ai"],
+      "properties": {
+        "parser": { "$ref": "#/$defs/nameVersion" },
+        "rules": { "type": "object", "additionalProperties": false, "required": ["packageId", "version"], "properties": { "packageId": { "type": "string" }, "version": { "$ref": "#/$defs/version" } } },
+        "ai": { "type": "object", "additionalProperties": false, "required": ["used", "provider", "model", "promptVersion"], "properties": { "used": { "type": "boolean" }, "provider": { "type": ["string", "null"] }, "model": { "type": ["string", "null"] }, "promptVersion": { "type": ["string", "null"] } } }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "fact": {
+      "type": "object", "additionalProperties": false, "required": ["value", "method", "confidence", "evidenceIds"],
+      "properties": { "value": {}, "method": { "enum": ["xml_parser", "pdf_text", "ocr", "ai", "derived", "not_observed"] }, "confidence": { "$ref": "#/$defs/confidence" }, "evidenceIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true } }
+    },
+    "artifact": { "type": "object", "additionalProperties": false, "required": ["id", "role", "mimeType", "sha256"], "properties": { "id": { "type": "string" }, "role": { "enum": ["fiscal_xml", "dian_response", "graphic_representation", "container"] }, "mimeType": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "evidence": { "type": "object", "additionalProperties": false, "required": ["id", "kind", "artifactId", "locator", "excerpt"], "properties": { "id": { "type": "string" }, "kind": { "enum": ["xml_path", "pdf_region", "file", "calculation", "external_response"] }, "artifactId": { "type": "string" }, "locator": { "type": "string" }, "excerpt": { "type": ["string", "null"] } } },
+    "factObject": { "type": "object", "additionalProperties": { "$ref": "#/$defs/fact" } },
+    "facts": {
+      "type": "object", "additionalProperties": false, "required": ["document", "supplier", "customer", "lines", "taxes", "totals", "references", "technical"],
+      "properties": {
+        "document": { "$ref": "#/$defs/factObject" }, "supplier": { "$ref": "#/$defs/factObject" }, "customer": { "$ref": "#/$defs/factObject" },
+        "lines": { "type": "array", "items": { "type": "object" } }, "taxes": { "type": "array", "items": { "type": "object" } },
+        "totals": { "$ref": "#/$defs/factObject" }, "references": { "type": "array", "items": { "type": "object" } }, "technical": { "$ref": "#/$defs/factObject" }
+      }
+    },
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "code", "category", "severity", "title", "description", "rule", "confidence", "factPaths", "evidenceIds", "observed", "expected", "recommendation", "requiresProfessionalReview"],
+      "properties": {
+        "id": { "type": "string" }, "code": { "type": "string", "pattern": "^CO-[A-Z0-9_-]+$" },
+        "category": { "enum": ["structure", "identity", "arithmetic", "tax", "reference", "signature", "dian_validation", "completeness"] },
+        "severity": { "enum": ["info", "warning", "error", "critical"] }, "title": { "type": "string" }, "description": { "type": "string" },
+        "rule": { "type": "object", "additionalProperties": false, "required": ["id", "version", "regulatoryReference"], "properties": { "id": { "type": "string" }, "version": { "$ref": "#/$defs/version" }, "regulatoryReference": { "type": ["string", "null"] } } },
+        "confidence": { "$ref": "#/$defs/confidence" }, "factPaths": { "type": "array", "items": { "type": "string" } }, "evidenceIds": { "type": "array", "items": { "type": "string" } },
+        "observed": {}, "expected": {}, "recommendation": { "type": "string" }, "requiresProfessionalReview": { "type": "boolean" }
+      }
+    },
+    "nameVersion": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "$ref": "#/$defs/version" } } }
+  }
+}

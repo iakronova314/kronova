@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
+  LockKeyhole,
 } from 'lucide-react'
 import { logout } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,8 @@ interface AppSidebarProps {
   organizations: Organization[]
   activeOrganization: Organization
   user: { name: string; email: string }
+  allowedModules: ModuleId[]
+  onUtilityOpen: (view: 'settings' | 'apiKeys' | 'billing') => void
 }
 
 export function AppSidebar({
@@ -41,6 +44,8 @@ export function AppSidebar({
   organizations,
   activeOrganization,
   user,
+  allowedModules,
+  onUtilityOpen,
 }: AppSidebarProps) {
   const [tenantOpen, setTenantOpen] = useState(false)
 
@@ -136,17 +141,19 @@ export function AppSidebar({
         <ul className="flex flex-col gap-1">
           {navModules.map((mod) => {
             const active = mod.id === activeModule
+            const locked = mod.id !== 'overview' && !allowedModules.includes(mod.id)
             const Icon = mod.icon
             return (
               <li key={mod.id}>
                 <button
                   type="button"
-                  onClick={() => onModuleChange(mod.id)}
+                  onClick={() => !locked && onModuleChange(mod.id)}
+                  disabled={locked}
                   title={collapsed ? mod.label : undefined}
                   className={cn(
                     'group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
                     collapsed && 'justify-center',
-                    active
+                    locked ? 'cursor-not-allowed opacity-45' : active
                       ? 'bg-primary/15 text-sidebar-foreground'
                       : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
                   )}
@@ -168,6 +175,7 @@ export function AppSidebar({
                   {!collapsed && active && (
                     <span className="size-1.5 shrink-0 rounded-full bg-primary" />
                   )}
+                  {!collapsed && locked && <LockKeyhole className="size-3.5 shrink-0" />}
                 </button>
               </li>
             )
@@ -178,9 +186,9 @@ export function AppSidebar({
       {/* Bottom section */}
       <div className="border-t border-border p-3">
         <ul className="flex flex-col gap-1">
-          <SidebarSecondary icon={Settings} label="Settings" collapsed={collapsed} />
-          <SidebarSecondary icon={KeyRound} label="API Keys" collapsed={collapsed} />
-          <SidebarSecondary icon={CreditCard} label="Billing" collapsed={collapsed} />
+          <SidebarSecondary icon={Settings} label="Configuración" collapsed={collapsed} onClick={() => onUtilityOpen('settings')} />
+          <SidebarSecondary icon={KeyRound} label="Claves API" collapsed={collapsed} onClick={() => onUtilityOpen('apiKeys')} />
+          <SidebarSecondary icon={CreditCard} label="Facturación" collapsed={collapsed} onClick={() => onUtilityOpen('billing')} />
           <li>
             <form action={logout}>
               <button type="submit" title={collapsed ? 'Cerrar sesión' : undefined} className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground', collapsed && 'justify-center')}>
@@ -240,15 +248,18 @@ function SidebarSecondary({
   icon: Icon,
   label,
   collapsed,
+  onClick,
 }: {
   icon: typeof Settings
   label: string
   collapsed: boolean
+  onClick: () => void
 }) {
   return (
     <li>
       <button
         type="button"
+        onClick={onClick}
         title={collapsed ? label : undefined}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground',
