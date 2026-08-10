@@ -79,16 +79,18 @@ async function processJob(job: Record<string, unknown>, workerId: string) {
       const fiscalSupplierTaxId = invoice.facts.supplier.taxId.value?.replace(/[^0-9A-Za-z]/g, '').toUpperCase() ?? null
       let duplicateDocumentId: string | null = null
       if (fiscalDocumentNumber && fiscalSupplierTaxId) {
-        const { data: duplicate, error: duplicateError } = await admin.from('documents').select('id')
+        const { data: matchingDocuments, error: duplicateError } = await admin.from('documents').select('id,mime_type')
           .eq('tenant_id', tenantId).eq('jurisdiction', 'CO')
           .eq('fiscal_document_number', fiscalDocumentNumber).eq('fiscal_supplier_tax_id', fiscalSupplierTaxId)
-          .neq('id', documentId).is('deleted_at', null).limit(1).maybeSingle()
+          .neq('id', documentId).is('deleted_at', null).limit(20)
         if (duplicateError) throw duplicateError
+        const currentIsPdf = document.mime_type === 'application/pdf'
+        const duplicate = matchingDocuments?.find((candidate) => (candidate.mime_type === 'application/pdf') === currentIsPdf)
         duplicateDocumentId = duplicate?.id ?? null
       }
       const { error: identityError } = await admin.from('documents').update({ fiscal_document_number: fiscalDocumentNumber, fiscal_supplier_tax_id: fiscalSupplierTaxId }).eq('id', documentId).eq('tenant_id', tenantId)
       if (identityError) throw identityError
-      audit = auditInvoice(invoice.facts, { duplicateDocumentId })
+      audit = auditInvoice(invoice.facts, { duplicateDocumentId, sourceFormat: document.mime_type === 'application/pdf' ? 'pdf' : 'xml' })
     }
     await admin.from('document_extractions').upsert({
       document_id: documentId, tenant_id: tenantId, status: extraction.status,

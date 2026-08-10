@@ -28,13 +28,19 @@ export function Dashboard({ user, organizations, activeOrganization, notice }: {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [activeModule, setActiveModule] = useState<ModuleId>('overview')
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
-    typeof window !== 'undefined' && window.localStorage.getItem('kronova-theme') === 'light' ? 'light' : 'dark',
-  )
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [utilityView, setUtilityView] = useState<UtilityViewId>(null)
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [overviewLoading, setOverviewLoading] = useState(true)
   const [entitlements, setEntitlements] = useState<{ status: string; allowedModules: ModuleId[]; planName?: string; trialEndsAt?: string | null }>({ status: 'loading', allowedModules: [] })
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('kronova-theme')
+    if (saved === 'light') {
+      const timer = window.setTimeout(() => setTheme('light'), 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')

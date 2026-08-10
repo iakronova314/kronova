@@ -36,6 +36,14 @@ export const DOCAUDIT_RESPONSE_JSON_SCHEMA = {
   required: ['summary', 'explanations', 'reviewNotes'],
 } as const
 
+function geminiCompatibleSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(geminiCompatibleSchema)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.entries(value).flatMap(([key, item]) =>
+    ['minLength', 'maxLength', 'maxItems'].includes(key) ? [] : [[key, geminiCompatibleSchema(item)]],
+  ))
+}
+
 function safeText(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') throw new Error('INVALID_AI_RESPONSE')
   const cleaned = value.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/https?:\/\/\S+/gi, '').replace(/\s+/g, ' ').trim()
@@ -84,7 +92,7 @@ export async function analyzeDocAudit(facts: ExtractedFacts, findings: Finding[]
     contents: [{ role: 'user', parts: [{ text: JSON.stringify(payload) }] }],
     config: {
       systemInstruction: DOCAUDIT_INVOICE_SYSTEM_INSTRUCTION,
-      httpOptions: { timeout: 60_000 }, responseMimeType: 'application/json', responseJsonSchema: DOCAUDIT_RESPONSE_JSON_SCHEMA,
+      httpOptions: { timeout: 120_000 }, responseMimeType: 'application/json', responseJsonSchema: geminiCompatibleSchema(DOCAUDIT_RESPONSE_JSON_SCHEMA),
       temperature: 0, seed: DOCAUDIT_AI_SEED,
     },
   })

@@ -51,12 +51,13 @@ class FactsBuilder {
       return { value: null, method: 'not_observed', confidence: 0, evidenceIds: [] }
     }
     const id = `ev-${this.evidence.length + 1}`
-    this.evidence.push({ id, kind: method === 'xml_parser' ? 'xml_path' : 'pdf_region', artifactId: 'primary', locator, excerpt: excerpt ?? String(value).slice(0, 240) })
+    const kind = method === 'xml_parser' ? 'xml_path' : method === 'derived' ? 'calculation' : 'pdf_region'
+    this.evidence.push({ id, kind, artifactId: 'primary', locator, excerpt: excerpt ?? String(value).slice(0, 240) })
     return { value, method, confidence: method === 'xml_parser' ? 1 : 0.75, evidenceIds: [id] }
   }
 
-  money(value: string | null, currency: string, method: FactMethod, locator: string, required = false): Fact<Money> {
-    return this.fact(value === null ? null : { amount: value, currency }, method, locator, required, value)
+  money(value: string | null, currency: string, method: FactMethod, locator: string, required = false, excerpt?: string | null): Fact<Money> {
+    return this.fact(value === null ? null : { amount: value, currency }, method, locator, required, excerpt ?? value)
   }
 }
 
@@ -238,10 +239,10 @@ export function extractInvoiceFromXml(bytes: Uint8Array): InvoiceExtraction {
   return { facts, evidence: builder.evidence, missingRequiredPaths: [...new Set(builder.missingRequiredPaths)] }
 }
 
-function matchPages(pages: ExtractedPage[], pattern: RegExp): { value: string; page: number; excerpt: string } | null {
+function matchPages(pages: ExtractedPage[], pattern: RegExp): { value: string; page: number; excerpt: string; start: number; end: number } | null {
   for (const page of pages) {
     const match = page.text.match(pattern)
-    if (match?.[1]) return { value: match[1].trim(), page: page.page, excerpt: match[0] }
+    if (match?.[1] && match.index !== undefined) return { value: match[1].trim(), page: page.page, excerpt: match[0], start: match.index, end: match.index + match[0].length }
   }
   return null
 }
@@ -249,41 +250,77 @@ function matchPages(pages: ExtractedPage[], pattern: RegExp): { value: string; p
 /** Conservative PDF fallback. It never claims XML, signature, line or DIAN validation. */
 export function extractInvoiceFromPdf(pages: ExtractedPage[]): InvoiceExtraction {
   const builder = new FactsBuilder()
+  const text = pages.map((page) => page.text).join(' ')
+  const locator = (path: string, excerpt?: string | null) => {
+    if (excerpt) for (const page of pages) {
+      const start = page.text.indexOf(excerpt)
+      if (start >= 0) return `page:${page.page}:chars:${start}-${start + excerpt.length}:${path}`
+    }
+    return `unlocated:${path}`
+  }
   const missing = <T>(path: string) => builder.fact<T>(null, 'not_observed', path)
   const found = (pattern: RegExp, path: string, required = false) => {
     const match = matchPages(pages, pattern)
-    return builder.fact(match?.value ?? null, 'pdf_text', match ? `page:${match.page}:${path}` : path, required, match?.excerpt)
+    return builder.fact(match?.value ?? null, 'pdf_text', match ? `page:${match.page}:chars:${match.start}-${match.end}:${path}` : `unlocated:${path}`, required, match?.excerpt)
   }
   const currencyFact = found(/(?:moneda|currency)\s*[:\-]?\s*([A-Z]{3})/i, 'facts.document.currency')
   const currency = currencyFact.value ?? 'COP'
+  const effectiveCurrency = currencyFact.value ? currencyFact : /(?:pesos\s*\/\s*mcte|\bCOP\b)/i.test(text)
+    ? builder.fact('COP', 'derived', 'calculation:facts.document.currency:visible-label-pesos-mcte', false, 'COP inferido de “Pesos /Mcte”.') : currencyFact
   const money = (pattern: RegExp, path: string, required = false) => {
     const match = matchPages(pages, pattern)
     const amount = match?.value.replace(/\s/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.') ?? null
-    return builder.money(amount, currency, 'pdf_text', match ? `page:${match.page}:${path}` : path, required)
+    return builder.money(amount, currency, 'pdf_text', match ? `page:${match.page}:chars:${match.start}-${match.end}:${path}` : `unlocated:${path}`, required, match?.excerpt)
   }
-  const missingParty = (prefix: string): PartyFacts => ({
-    name: found(new RegExp(`${prefix}[^\\n]{0,20}(?:nombre|raz[oó]n social)\\s*[:\\-]?\\s*([^\\n]{2,100})`, 'i'), `facts.${prefix}.name`, true),
-    taxId: found(new RegExp(`${prefix}[^\\n]{0,30}(?:NIT|CC)\\s*[:\\-]?\\s*([0-9.-]+)`, 'i'), `facts.${prefix}.taxId`, true),
-    verificationDigit: missing<string>(`facts.${prefix}.verificationDigit`), identificationType: missing<string>(`facts.${prefix}.identificationType`),
+  const pdfFact = <T>(value: T | null, path: string, excerpt?: string | null) => builder.fact(value, 'pdf_text', locator(path, excerpt), false, excerpt)
+  const normalizeAmount = (value: string) => {
+    const compact = value.replace(/\s/g, '')
+    const comma = compact.lastIndexOf(',')
+    const dot = compact.lastIndexOf('.')
+    if (comma >= 0 && dot >= 0) return dot > comma ? compact.replace(/,/g, '') : compact.replace(/\./g, '').replace(',', '.')
+    if (comma >= 0) return /^\d{1,3}(?:,\d{3})+$/.test(compact) ? compact.replace(/,/g, '') : compact.replace(',', '.')
+    if (dot >= 0) return /^\d{1,3}(?:\.\d{3})+$/.test(compact) ? compact.replace(/\./g, '') : compact
+    return compact
+  }
+  const cleanId = (value: string | undefined) => value ? value.replace(/\D/g, '') : null
+  const supplierMatch = text.match(/CUFE\s*:\s*[a-f0-9]{40,}\s+(.{2,100}?)\s+NIT\s*:\s*([0-9.,]+)\s*-\s*(\d)/i)
+  const customerMatch = text.match(/Cliente\s+NIT\s+Direcci[oó]n\s+Tel[eé]fono\s+(.{2,100}?)\s+([0-9.,]+)\s*-\s*(\d)/i)
+  const party = (prefix: 'supplier' | 'customer', match: RegExpMatchArray | null): PartyFacts => ({
+    name: pdfFact(match?.[1]?.trim() ?? null, `facts.${prefix}.name`, match?.[0]), taxId: pdfFact(cleanId(match?.[2]), `facts.${prefix}.taxId`, match?.[0]),
+    verificationDigit: pdfFact(match?.[3] ?? null, `facts.${prefix}.verificationDigit`, match?.[0]), identificationType: builder.fact(match ? '31' : null, 'derived', `calculation:facts.${prefix}.identificationType:nit-label`, false, match ? 'Tipo 31 inferido de la etiqueta NIT.' : null),
     taxResponsibilities: missing<string[]>(`facts.${prefix}.taxResponsibilities`), address: missing<string>(`facts.${prefix}.address`), email: missing<string>(`facts.${prefix}.email`),
   })
+  const lines: LineFacts[] = []
+  const linePattern = /(?:^|\s)(\d{10,20})\s+(.{2,160}?)\s+(KGM|EA|NIU|UND|UN|H87|LTR|MTR)\s+(\d+(?:[.,]\d+)?)\s+([0-9][0-9.,]*)\s+([0-9][0-9.,]*)(?=\s+(?:\d{10,20}|[A-Z]\s+Total|Total\s+Bruto))/gi
+  for (const match of text.matchAll(linePattern)) {
+    const index = lines.length; const excerpt = match[0].trim()
+    lines.push({ id: match[1], description: pdfFact(match[2].trim(), `facts.lines[${index}].description`, excerpt), quantity: pdfFact(normalizeAmount(match[4]), `facts.lines[${index}].quantity`, excerpt), unitCode: pdfFact(match[3], `facts.lines[${index}].unitCode`, excerpt), unitPrice: builder.money(normalizeAmount(match[5]), currency, 'pdf_text', locator(`facts.lines[${index}].unitPrice`, excerpt), false, excerpt), lineExtensionAmount: builder.money(normalizeAmount(match[6]), currency, 'pdf_text', locator(`facts.lines[${index}].lineExtensionAmount`, excerpt), false, excerpt), discounts: builder.money('0', currency, 'derived', `calculation:facts.lines[${index}].discounts:not-observed-assumed-zero`, false, 'Sin descuento visible; se usa cero para el recálculo.'), charges: builder.money('0', currency, 'derived', `calculation:facts.lines[${index}].charges:not-observed-assumed-zero`, false, 'Sin cargo visible; se usa cero para el recálculo.'), taxIds: [] })
+  }
+  const grossMatch = matchPages(pages, /Total\s+Bruto\s*[:$]?\s*([0-9.,]+)/i); const ivaMatch = matchPages(pages, /\bIVA\s*[:$]?\s*([0-9.,]+)/i)
+  const grossAmount = grossMatch ? normalizeAmount(grossMatch.value) : null; const ivaAmount = ivaMatch ? normalizeAmount(ivaMatch.value) : null
+  const inferredRate = grossAmount && ivaAmount && Number(grossAmount) > 0 ? String(Number(((Number(ivaAmount) / Number(grossAmount)) * 100).toFixed(4))) : null
+  const taxes: TaxFacts[] = ivaAmount ? [{ id: 'tax-document-iva-1', scope: 'document', lineId: null, kind: pdfFact('IVA', 'facts.taxes[0].kind', ivaMatch?.excerpt), category: missing<string>('facts.taxes[0].category'), rate: builder.fact(inferredRate, 'derived', 'calculation:facts.taxes[0].rate:amount-divided-by-base', false, inferredRate ? `${ivaAmount} ÷ ${grossAmount} × 100 = ${inferredRate}%` : null), taxableAmount: builder.money(grossAmount, currency, 'pdf_text', locator('facts.taxes[0].taxableAmount', grossMatch?.excerpt), false, grossMatch?.excerpt), amount: builder.money(ivaAmount, currency, 'pdf_text', locator('facts.taxes[0].amount', ivaMatch?.excerpt), false, ivaMatch?.excerpt), isWithholding: builder.fact(false, 'derived', 'calculation:facts.taxes[0].isWithholding:iva-classification', false, 'IVA clasificado como impuesto, no como retención.') }] : []
+  const numberMatch = text.match(/FACTURA\s+DE\s+VENTA\s+ELECTR[OÓ]NICA\s+([A-Z]{1,10})\s*([0-9]{1,20})/i)
+  const dateTimeMatch = text.match(/Generaci[oó]n\s+Expedici[oó]n\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/i)
+  const dueDateMatch = text.match(/(?:Vencimiento\s+|Vence\s+el\s+)(\d{4}-\d{2}-\d{2})/i)
+  const paymentMeans = /Transferencia/i.test(text) ? ['transferencia'] : /efectivo/i.test(text) ? ['efectivo'] : null
   const facts: ExtractedFacts = {
     document: {
-      kind: builder.fact('invoice', 'pdf_text', 'page:*:document-kind', true),
-      number: found(/(?:factura|invoice)(?:\s+(?:electr[oó]nica|de venta))?\s*(?:n[oº°.]*)?\s*[:#-]?\s*([A-Z0-9-]+)/i, 'facts.document.number', true),
-      prefix: missing<string>('facts.document.prefix'), issueDate: found(/(?:fecha(?:\s+de\s+emisi[oó]n)?|issue date)\s*[:\-]?\s*(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})/i, 'facts.document.issueDate', true),
-      issueTime: found(/(?:hora|time)\s*[:\-]?\s*(\d{1,2}:\d{2}(?::\d{2})?)/i, 'facts.document.issueTime'), currency: currencyFact,
+      kind: builder.fact('invoice', 'derived', 'calculation:facts.document.kind:invoice-heading', true, 'Tipo factura inferido del encabezado visible.'),
+      number: pdfFact(numberMatch ? `${numberMatch[1]}${numberMatch[2]}` : null, 'facts.document.number', numberMatch?.[0]),
+      prefix: pdfFact(numberMatch?.[1] ?? null, 'facts.document.prefix', numberMatch?.[0]), issueDate: pdfFact(dateTimeMatch?.[1] ?? null, 'facts.document.issueDate', dateTimeMatch?.[0]),
+      issueTime: pdfFact(dateTimeMatch?.[2] ?? null, 'facts.document.issueTime', dateTimeMatch?.[0]), currency: effectiveCurrency,
       operationType: missing<string>('facts.document.operationType'), uniqueCode: found(/CUFE\s*[:\-]?\s*([a-f0-9]{40,})/i, 'facts.document.uniqueCode'),
-      uniqueCodeType: builder.fact('CUFE', 'derived', 'facts.document.uniqueCodeType'), paymentMeans: missing<string[]>('facts.document.paymentMeans'), paymentDueDate: missing<string>('facts.document.paymentDueDate'),
+      uniqueCodeType: builder.fact('CUFE', 'derived', 'calculation:facts.document.uniqueCodeType:cufe-label', false, 'Tipo CUFE inferido de la etiqueta visible.'), paymentMeans: pdfFact(paymentMeans, 'facts.document.paymentMeans', paymentMeans ? /Transferencia/i.exec(text)?.[0] ?? paymentMeans[0] : null), paymentDueDate: pdfFact(dueDateMatch?.[1] ?? null, 'facts.document.paymentDueDate', dueDateMatch?.[0]),
     },
-    supplier: missingParty('supplier'), customer: missingParty('customer'), lines: [], taxes: [], references: [],
+    supplier: party('supplier', supplierMatch), customer: party('customer', customerMatch), lines, taxes, references: [],
     totals: {
-      lineExtension: money(/(?:subtotal|valor bruto)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.lineExtension', true),
-      taxExclusive: money(/(?:total antes de impuestos|tax exclusive)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.taxExclusive'),
-      taxInclusive: money(/(?:total con impuestos|tax inclusive)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.taxInclusive'),
+      lineExtension: builder.money(grossAmount, currency, 'pdf_text', locator('facts.totals.lineExtension', grossMatch?.excerpt), true, grossMatch?.excerpt),
+      taxExclusive: builder.money(grossAmount, currency, 'pdf_text', locator('facts.totals.taxExclusive', grossMatch?.excerpt), true, grossMatch?.excerpt),
+      taxInclusive: money(/(?:total\s+a\s+pagar|total con impuestos|tax inclusive)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.taxInclusive', true),
       allowances: money(/(?:descuentos?|allowance)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.allowances'), charges: money(/(?:cargos?|charges?)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.charges'),
       prepaid: money(/(?:anticipos?|prepaid)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.prepaid'), withholding: money(/(?:retenciones?|withholding)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.withholding'),
-      payable: money(/(?:total(?:\s+a\s+pagar)?|payable)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.payable', true),
+      payable: money(/(?:total\s+a\s+pagar|payable)\s*[:$]?\s*([0-9.,]+)/i, 'facts.totals.payable', true),
     },
     technical: {
       ublVersion: missing<string>('facts.technical.ublVersion'), dianProfile: missing<string>('facts.technical.dianProfile'),
@@ -292,6 +329,6 @@ export function extractInvoiceFromPdf(pages: ExtractedPage[]): InvoiceExtraction
       dianValidatedAt: missing<string>('facts.technical.dianValidatedAt'), qrCode: missing<string>('facts.technical.qrCode'),
     },
   }
-  builder.missingRequiredPaths.push('facts.lines')
+  if (!lines.length) builder.missingRequiredPaths.push('facts.lines')
   return { facts, evidence: builder.evidence, missingRequiredPaths: [...new Set(builder.missingRequiredPaths)] }
 }

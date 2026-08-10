@@ -25,6 +25,11 @@ function xmlText(value: unknown, output: string[]) {
 }
 
 async function extractPdf(bytes: Uint8Array): Promise<ExtractionResult> {
+  // pdfjs-dist disables real workers in Node, but its fallback dynamically imports
+  // pdf.worker.mjs. Next/Turbopack cannot resolve that relative import once bundled,
+  // so preload the handler that PDF.js explicitly supports for its fake worker.
+  const pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs')
+  Object.assign(globalThis, { pdfjsWorker })
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const loadingTask = pdfjs.getDocument({ data: bytes, useWorkerFetch: false })
   const document = await loadingTask.promise

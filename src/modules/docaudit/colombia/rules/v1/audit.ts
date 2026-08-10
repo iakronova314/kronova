@@ -6,6 +6,7 @@ import { CO_RULES_V1 } from './package.ts'
 export interface AuditContext {
   duplicateDocumentId?: string | null
   now?: Date
+  sourceFormat?: 'xml' | 'attached_document' | 'zip' | 'pdf'
 }
 
 export interface DeterministicAudit {
@@ -58,6 +59,7 @@ export function auditInvoice(facts: ExtractedFacts, context: AuditContext = {}):
 
   const kind = facts.document.kind.value ?? 'unknown'
   for (const [path, requirement] of Object.entries(CO_V1_FIELD_REQUIREMENTS[kind])) {
+    if (context.sourceFormat === 'pdf' && path.startsWith('facts.technical.signature')) continue
     if (requirement === 'required' && !present(getPath(facts, path))) add({ code: 'CO-REQUIRED-FIELD-MISSING', category: 'completeness', severity: 'error', title: 'Campo obligatorio ausente', description: `No fue posible observar el campo ${path}.`, factPaths: [path], evidenceIds: [], observed: null, expected: 'present', recommendation: 'Verificar el XML original o completar la revisión manual.' })
   }
   facts.lines.forEach((line, index) => {

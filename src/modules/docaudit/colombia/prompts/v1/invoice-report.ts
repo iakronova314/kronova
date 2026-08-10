@@ -1,5 +1,5 @@
 export const DOCAUDIT_INVOICE_PROMPT_VERSION = 'invoice-report-es-CO@1.0.0' as const
-export const DOCAUDIT_AI_MODEL = 'gemini-3.6-flash' as const
+export const DOCAUDIT_AI_MODEL = 'gemini-3.5-flash' as const
 export const DOCAUDIT_AI_SEED = 1701 as const
 
 export const DOCAUDIT_INVOICE_SYSTEM_INSTRUCTION = `Eres el redactor especializado de reportes de DocAudit Colombia.

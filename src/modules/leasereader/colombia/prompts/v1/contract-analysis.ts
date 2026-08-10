@@ -1,5 +1,5 @@
 export const LEASEREADER_PROMPT_VERSION = 'contract-analysis-es-CO@1.0.0' as const
-export const LEASEREADER_AI_MODEL = 'gemini-3.6-flash' as const
+export const LEASEREADER_AI_MODEL = 'gemini-3.5-flash' as const
 export const LEASEREADER_AI_SEED = 2301 as const
 
 export const LEASEREADER_SYSTEM_INSTRUCTION = `Eres un extractor especializado en contratos inmobiliarios de Colombia.

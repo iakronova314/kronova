@@ -1,7 +1,7 @@
 # Integración de IA de DocAudit
 
 **Prompt:** `invoice-report-es-CO@1.0.0`  
-**Modelo solicitado:** `gemini-3.6-flash`  
+**Modelo solicitado:** `gemini-3.5-flash`  
 **Semilla:** `1701`  
 **Temperatura:** `0`
 

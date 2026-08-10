@@ -285,15 +285,13 @@ export function UploadWorkspace({ tenantId, module = 'docaudit', title = 'Análi
                   </button>
                 </div>
 
-                {/* Muestra del resultado analizado */}
+                {/* Confirmación breve; el informe completo se presenta en el módulo correspondiente. */}
                 {file.result && (
-                  <div className="mt-2 rounded-md bg-card p-3 text-xs font-mono border border-border text-card-foreground overflow-x-auto">
-                    <p className="font-sans font-semibold text-emerald-500 mb-1 flex items-center gap-1">
-                      <Sparkles className="size-3" /> Resultado del análisis con Gemini:
+                  <div className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-card-foreground">
+                    <p className="flex items-center gap-2 font-medium text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-4" /> Análisis completado
                     </p>
-                    <pre className="text-[11px] leading-relaxed">
-                      {JSON.stringify(file.result, null, 2)}
-                    </pre>
+                    <p className="mt-1 text-xs text-muted-foreground">Consulta el informe organizado en la lista de documentos procesados.</p>
                   </div>
                 )}
 
